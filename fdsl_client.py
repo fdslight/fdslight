@@ -219,7 +219,6 @@ class _fdslight_client(dispatcher.dispatcher):
         ''''''
 
         signal.signal(signal.SIGUSR1, self.__set_rules)
-        self.racs_reset()
 
     def __load_kernel_mod(self):
         ko_file = "%s/driver/fdslight_dgram.ko" % BASE_DIR
@@ -640,6 +639,10 @@ class _fdslight_client(dispatcher.dispatcher):
             self.clean_log()
             self.__last_log_clean_time = t
 
+        if self.__racs_cfg["connection"]["enable"]:
+            self.racs_reset()
+
+
     def set_route(self, host, prefix=None, timeout=None, is_ipv6=False, is_dynamic=True):
         if host in self.__routes: return
         # 如果是服务器的地址,那么不设置路由,避免使用ip_rules规则的时候进入死循环,因为服务器地址可能不在ip_rules文件中
@@ -757,13 +760,20 @@ class _fdslight_client(dispatcher.dispatcher):
         conn = self.__racs_cfg["connection"]
         security = self.__racs_cfg["security"]
         network = self.__racs_cfg["network"]
+        _type = conn["tunnel_type"].lower()
+
+        if _type not in ("tcp", "udp",): tunnel_type = "udp"
+
+        if tunnel_type == "udp":
+            h = racs.udp_tunnel
+        else:
+            h = racs.tcp_tunnel
 
         if conn["enable_ip6"]:
-            self.__racs_fd = self.create_handler(-1, racs.udp_tunnel, (conn["host"], int(conn["port"]),), is_ipv6=True)
+            self.__racs_fd = self.create_handler(-1, h, (conn["host"], int(conn["port"]),), is_ipv6=True)
         else:
-            self.__racs_fd = self.create_handler(-1, racs.udp_tunnel, (conn["host"], int(conn["port"]),), is_ipv6=False)
+            self.__racs_fd = self.create_handler(-1, h, (conn["host"], int(conn["port"]),), is_ipv6=False)
 
-        self.get_handler(self.__racs_fd).enable(conn["enable"])
         self.get_handler(self.__racs_fd).set_key(security["shared_key"])
         self.get_handler(self.__racs_fd).set_priv_key(security["private_key"])
 
@@ -829,6 +839,9 @@ class _fdslight_client(dispatcher.dispatcher):
             socket.inet_pton(socket.AF_INET6, netutils.ip_prefix_convert(int(prefix), is_ipv6=True))
         )
         self.__racs_cfg = configs
+
+    def tell_racs_close(self):
+        self.__racs_fd = -1
 
     def send_to_local(self, msg: bytes):
         self.send_msg_to_tun(msg)
