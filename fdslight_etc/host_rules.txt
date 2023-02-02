@@ -167,6 +167,7 @@ podcasts.captivate.fm:1
 *.boxun.com:1
 *.peacehall.com:1
 *.ganjingworld.com:1
+*.ganjing.com:1
 
 # 苹果日报
 *.appledaily.com:1
