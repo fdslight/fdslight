@@ -37,6 +37,8 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
     __tmp_buf = None
 
+    __context = None
+
     def init_func(self, creator, crypto, crypto_configs, conn_timeout=720, is_ipv6=False, **kwargs):
         self.__ssl_handshake_ok = False
         self.__over_https = False
@@ -62,18 +64,23 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             self.__strict_https = cfgs["strict_https"]
 
             context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+            self.__context = context
+
             context.set_alpn_protocols(["http/1.1"])
-            if self.__enable_https_sni:
-                if not self.__https_sni_host: self.__https_sni_host = kwargs["host"]
-                s = context.wrap_socket(s, do_handshake_on_connect=False, server_hostname=self.__https_sni_host)
-            else:
-                s = context.wrap_socket(s, do_handshake_on_connect=False)
+
+            self.__https_sni_host = kwargs["host"]
 
             if self.__strict_https:
                 context.verify_mode = ssl.CERT_REQUIRED
                 context.load_verify_locations(self.dispatcher.ca_path)
+                context.verify_flags = ssl.VERIFY_CRL_CHECK_CHAIN
             else:
                 context.verify_mode = ssl.CERT_NONE
+
+            if self.__enable_https_sni:
+                s = context.wrap_socket(s, do_handshake_on_connect=False, server_hostname=self.__https_sni_host)
+            else:
+                s = context.wrap_socket(s, do_handshake_on_connect=False)
 
         self.set_socket(s)
         self.__conn_timeout = conn_timeout
@@ -254,8 +261,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             self.socket.do_handshake()
             self.__ssl_handshake_ok = True
 
-            # 如果开启SNI那么匹配证书
-            if self.__enable_https_sni:
+            if self.__strict_https:
                 cert = self.socket.getpeercert()
                 ssl.match_hostname(cert, self.__https_sni_host)
 
