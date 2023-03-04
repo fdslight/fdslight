@@ -68,12 +68,13 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
             context.set_alpn_protocols(["http/1.1"])
 
-            self.__https_sni_host = kwargs["host"]
+            if not self.__https_sni_host:
+                self.__https_sni_host = kwargs["host"]
 
             if self.__strict_https:
                 context.verify_mode = ssl.CERT_REQUIRED
                 context.load_verify_locations(self.dispatcher.ca_path)
-                context.verify_flags = ssl.VERIFY_CRL_CHECK_CHAIN
+                context.verify_flags = ssl.VERIFY_DEFAULT
             else:
                 context.verify_mode = ssl.CERT_NONE
 
