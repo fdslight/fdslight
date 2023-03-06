@@ -55,6 +55,7 @@ goo.gl:1
 *.paypal.com:1
 *.paypalobjects.com:1
 *.duckduckgo.com:1
+chat.openai.com:1
 
 #  社交网络
 *.facebook.com:1
