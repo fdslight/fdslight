@@ -13,7 +13,7 @@ struct map_node{
 	struct map_node *list_next;
 	// 节点树对应的前一个
 	struct map_node *tree_prev;
-	struct map_node *next_nodes[0xff];
+	struct map_node *next_nodes[256];
 	void *data;
 	unsigned long long refcnt;
 	unsigned char key_v;
