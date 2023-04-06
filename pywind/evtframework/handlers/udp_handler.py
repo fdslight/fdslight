@@ -42,7 +42,7 @@ class udp_handler(handler.handler):
     def get_id(self, address):
         """根据地址生成唯一id"""
         if isinstance(address, tuple):
-            return "%s-%s" % address
+            return "%s-%s" % (address[0],address[1],)
         return address
 
     def bind(self, address):
