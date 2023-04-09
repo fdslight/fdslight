@@ -24,6 +24,7 @@ import freenet.lib.file_parser as file_parser
 import freenet.handlers.traffic_pass as traffic_pass
 import freenet.lib.logging as logging
 import freenet.lib.racs_cext as racs_cext
+import freenet.lib.os_resolv as os_resolv
 import freenet.handlers.racs as racs
 import dns.resolver
 
@@ -97,6 +98,9 @@ class _fdslight_client(dispatcher.dispatcher):
     __racs_byte_network_v4 = None
     __racs_byte_network_v6 = None
 
+    __os_resolv_backup = None
+    __os_resolv = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -136,11 +140,14 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__static_routes = {}
         self.__tunnel_conn_fail_count = 0
         self.__racs_fd = -1
+        self.__os_resolv_backup = []
+        self.__os_resolv = os_resolv.resolv()
 
         self.load_racs_configs()
 
         if mode == "local":
             self.__mode = _MODE_LOCAL
+            self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
         else:
             self.__mode = _MODE_GW
             self.__load_kernel_mod()
@@ -185,6 +192,10 @@ class _fdslight_client(dispatcher.dispatcher):
 
             self.__local_dns = vir_dns
             self.__local_dns6 = vir_dns6
+
+            _list = [("nameserver", vir_dns),] + self.__os_resolv_backup
+
+            self.__os_resolv.write_to_file(_list)
 
             self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
             if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
@@ -471,7 +482,7 @@ class _fdslight_client(dispatcher.dispatcher):
             is_ipv6 = utils.is_ipv6_address(subnet)
 
             # 找到和nameserver冲突的路由那么跳过,这里需要判断IP地址类型是否一致
-            if ns_is_ipv6==is_ipv6:
+            if ns_is_ipv6 == is_ipv6:
                 t = utils.calc_subnet(nameserver, prefix, is_ipv6=ns_is_ipv6)
                 if t == subnet:
                     logging.print_error(
@@ -643,7 +654,6 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
 
-
     def set_route(self, host, prefix=None, timeout=None, is_ipv6=False, is_dynamic=True):
         if host in self.__routes: return
         # 如果是服务器的地址,那么不设置路由,避免使用ip_rules规则的时候进入死循环,因为服务器地址可能不在ip_rules文件中
@@ -732,6 +742,8 @@ class _fdslight_client(dispatcher.dispatcher):
             os.chdir("%s/driver" % BASE_DIR)
             os.system("rmmod fdslight_dgram")
             os.chdir("../")
+        else:
+            self.__os_resolv.write_to_file(self.__os_resolv_backup)
         sys.exit(0)
 
     def __set_tunnel_ip(self, ip):
