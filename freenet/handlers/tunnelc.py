@@ -99,7 +99,14 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
     def check_cert_is_expired(self):
         peer_cert = self.socket.getpeercert()
-        print(peer_cert)
+        expire_time = peer_cert["notAfter"]
+        t = time.strptime(expire_time, "%b %d %H:%M:%S %Y %Z")
+        expire_secs = time.mktime(t)
+        now = time.time()
+
+        if now > expire_secs: return True
+
+        return False
 
     def create_tunnel(self, server_address):
         server_ip = self.dispatcher.get_server_ip(server_address[0])
@@ -275,8 +282,11 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             if self.__strict_https:
                 cert = self.socket.getpeercert()
                 ssl.match_hostname(cert, self.__https_sni_host)
-                self.check_cert_is_expired()
-
+                if self.check_cert_is_expired():
+                    logging.print_general("TLS_CERTIFICATE_EXPIRED", self.__server_address)
+                    self.delete_handler(self.fileno)
+                    return
+                ''''''
             logging.print_general("TLS_handshake_ok", self.__server_address)
             self.add_evt_read(self.fileno)
             self.send_handshake()
