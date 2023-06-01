@@ -97,6 +97,10 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
         return self.fileno
 
+    def check_cert_is_expired(self):
+        peer_cert = self.socket.getpeercert()
+        print(peer_cert)
+
     def create_tunnel(self, server_address):
         server_ip = self.dispatcher.get_server_ip(server_address[0])
         if not server_ip: return False
@@ -271,6 +275,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             if self.__strict_https:
                 cert = self.socket.getpeercert()
                 ssl.match_hostname(cert, self.__https_sni_host)
+                self.check_cert_is_expired()
 
             logging.print_general("TLS_handshake_ok", self.__server_address)
             self.add_evt_read(self.fileno)
@@ -313,7 +318,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
         # 伪装成websocket握手
         kv_pairs = [("Connection", "Upgrade"), ("Upgrade", "websocket",),
-                    ("DNT",1,),
+                    ("DNT", 1,),
                     ("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/200.0",),
                     ("Accept-Language", "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2"),
                     ("Sec-WebSocket-Version", 13,), ("Sec-WebSocket-Key", self.rand_string(),),
