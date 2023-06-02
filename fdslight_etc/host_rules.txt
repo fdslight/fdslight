@@ -284,6 +284,7 @@ security.debian.org:1
 *.nintendo.com:1
 cdn.treasuredata.com:1
 *.steampowered.com:1
+*.gamer.com.tw:1
 
 ### 开发相关
 *.spice-space.org:1
