@@ -193,7 +193,7 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__local_dns = vir_dns
             self.__local_dns6 = vir_dns6
 
-            _list = [("nameserver", vir_dns),]
+            _list = [("nameserver", vir_dns), ]
 
             self.__os_resolv.write_to_file(_list)
 
@@ -596,10 +596,18 @@ class _fdslight_client(dispatcher.dispatcher):
         if utils.is_ipv6_address(host): return host
 
         enable_ipv6 = bool(int(self.__configs["connection"]["enable_ipv6"]))
+        nameserves = [self.__configs["public"]["remote_dns"]]
+
         resolver = dns.resolver.Resolver()
-        resolver.nameservers = [self.__configs["public"]["remote_dns"]]
+        resolver.nameservers = nameserves
 
         try:
+            if enable_ipv6:
+                rs = resolver.resolve(host, "AAAA")
+            else:
+                rs = resolver.resolve(host, "A")
+        # API回退
+        except AttributeError:
             if enable_ipv6:
                 rs = resolver.query(host, "AAAA")
             else:
