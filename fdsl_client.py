@@ -546,12 +546,7 @@ class _fdslight_client(dispatcher.dispatcher):
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
 
-        try:
-            self.__limit_traffic_size = int(conn.get("traffic_limit_size", "0"))
-        except ValueError:
-            raise ValueError("wrong traffic_limit_size value %s" % self.__limit_traffic_size)
-        if self.__limit_traffic_size < 0:
-            raise ValueError("wrong traffic_limit_size value %s" % self.__limit_traffic_size)
+        self.__limit_traffic_size = int(conn.get("traffic_limit_size", "0"))
 
         if not self.have_traffic():
             logging.print_error("not enough traffic for tunnel")
