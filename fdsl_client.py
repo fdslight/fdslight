@@ -374,7 +374,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if seession_id != self.session_id: return
         if action not in proto_utils.ACTS: return
 
-        self.__cur_traffic_size = len(message)
+        self.__cur_traffic_size += len(message)
         if not self.have_traffic(): return
 
         if action == proto_utils.ACT_DNS:
@@ -689,6 +689,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if t - self.__traffic_up_time > 60:
             self.flush_traffic_statistics()
             self.reset_traffic()
+            self.__traffic_up_time=t
 
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
@@ -925,7 +926,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
     def reset_traffic(self):
         now = time.time()
-        if now - self.__traffic_up_time > 86400 * 30:
+        if now - self.__traffic_begin_time > 86400 * 30:
             self.__traffic_begin_time = now
             self.__cur_traffic_size = 0
             return
