@@ -1014,7 +1014,7 @@ def main():
     help_doc = """
     -d      debug | start | stop    debug,start or stop application
     -m      local | gateway         run as local or gateway
-    -u      rules                   update host and ip rules
+    -u      rules | reset_traffic    update host and ip rules or reset traffic
     """
     try:
         opts, args = getopt.getopt(sys.argv[1:], "u:m:d:", [])
@@ -1037,11 +1037,14 @@ def main():
         print(help_doc)
         return
 
-    if u and u != "rules":
+    if u and u not in ("rules", "reset_traffic",):
         print(help_doc)
         return
     if u == "rules":
         __update_rules()
+        return
+    if u == "reset_traffic":
+        __reset_traffic()
         return
 
     if d not in ("debug", "start", "stop",):
