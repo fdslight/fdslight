@@ -244,6 +244,7 @@ class _fdslight_client(dispatcher.dispatcher):
         ''''''
 
         signal.signal(signal.SIGUSR1, self.__set_rules)
+        signal.signal(signal.SIGUSR2, self.__reset_traffic_sig)
 
     def __load_kernel_mod(self):
         ko_file = "%s/driver/fdslight_dgram.ko" % BASE_DIR
@@ -551,6 +552,10 @@ class _fdslight_client(dispatcher.dispatcher):
             raise ValueError("wrong traffic_limit_size value %s" % self.__limit_traffic_size)
         if self.__limit_traffic_size < 0:
             raise ValueError("wrong traffic_limit_size value %s" % self.__limit_traffic_size)
+
+        if not self.have_traffic():
+            logging.print_error("not enough traffic for tunnel")
+            return
 
         is_udp = False
 
@@ -939,6 +944,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
         return True
 
+    def __reset_traffic_sig(self, signum, frame):
+        now = time.time()
+        self.__cur_traffic_size = 0
+        self.__traffic_begin_time = now
+
 
 def __start_service(mode, debug):
     if not debug and os.path.isfile(PID_FILE):
@@ -989,6 +999,15 @@ def __update_rules():
         return
 
     os.kill(pid, signal.SIGUSR1)
+
+
+def __reset_traffic():
+    pid = proc.get_pid(PID_FILE)
+    if pid < 0:
+        print("fdslight process not exists")
+        return
+
+    os.kill(pid, signal.SIGUSR2)
 
 
 def main():
