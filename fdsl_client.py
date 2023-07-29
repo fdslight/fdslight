@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, os, time
+import sys, os, time, json
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -101,6 +101,12 @@ class _fdslight_client(dispatcher.dispatcher):
     __os_resolv_backup = None
     __os_resolv = None
 
+    __cur_traffic_size = None
+    __limit_traffic_size = None
+    __traffic_statistics_path = None
+    __traffic_up_time = None
+    __traffic_begin_time = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -143,6 +149,14 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__os_resolv_backup = []
         self.__os_resolv = os_resolv.resolv()
 
+        self.__cur_traffic_size = 0
+        self.__limit_traffic_size = 0
+
+        self.__traffic_statistics_path = "%s/traffic.json" % BASE_DIR
+        self.__traffic_up_time = time.time()
+        self.__traffic_begin_time = time.time()
+
+        self.load_traffic_statistics()
         self.load_racs_configs()
 
         if mode == "local":
@@ -359,6 +373,9 @@ class _fdslight_client(dispatcher.dispatcher):
         if seession_id != self.session_id: return
         if action not in proto_utils.ACTS: return
 
+        self.__cur_traffic_size = len(message)
+        if not self.have_traffic(): return
+
         if action == proto_utils.ACT_DNS:
             self.get_handler(self.__dns_fileno).msg_from_tunnel(message)
             return
@@ -389,6 +406,9 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__open_tunnel()
 
         if not self.handler_exists(self.__tunnel_fileno): return
+
+        self.__cur_traffic_size += len(message)
+        if not self.have_traffic(): return
 
         handler = self.get_handler(self.__tunnel_fileno)
         handler.send_msg_to_tunnel(self.session_id, action, message)
@@ -525,6 +545,13 @@ class _fdslight_client(dispatcher.dispatcher):
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
 
+        try:
+            self.__limit_traffic_size = int(conn.get("traffic_limit_size", "0"))
+        except ValueError:
+            raise ValueError("wrong traffic_limit_size value %s" % self.__limit_traffic_size)
+        if self.__limit_traffic_size < 0:
+            raise ValueError("wrong traffic_limit_size value %s" % self.__limit_traffic_size)
+
         is_udp = False
 
         enable_heartbeat = bool(int(conn.get("enable_heartbeat", 0)))
@@ -658,6 +685,10 @@ class _fdslight_client(dispatcher.dispatcher):
         if t - self.__last_log_clean_time > AUTO_LOG_CLEAN_TIME:
             self.clean_log()
             self.__last_log_clean_time = t
+
+        if t - self.__traffic_up_time > 60:
+            self.flush_traffic_statistics()
+            self.reset_traffic()
 
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
@@ -866,6 +897,47 @@ class _fdslight_client(dispatcher.dispatcher):
 
     def send_to_local(self, msg: bytes):
         self.send_msg_to_tun(msg)
+
+    def flush_traffic_statistics(self):
+        t = time.localtime(self.__traffic_begin_time)
+        s = json.dumps({"begin_time": self.__traffic_begin_time, "traffic_size": self.__cur_traffic_size,
+                        "comment_used_traffic_size": "%sGB" % int(self.__cur_traffic_size / 1024 / 1024 / 1024),
+                        "comment_traffic_limit": "%sGB" % int(self.__limit_traffic_size / 1024 / 1024 / 1024),
+                        "comment_begin_time": "%s" % time.strftime("%Y-%m-%d %H:%M:%S", t)
+                        })
+        with open(self.__traffic_statistics_path, "w") as f:
+            f.write(s)
+        f.close()
+
+    def load_traffic_statistics(self):
+        if not os.path.isfile(self.__traffic_statistics_path):
+            self.__traffic_begin_time = time.time()
+            self.__cur_traffic_size = 0
+            return
+
+        with open(self.__traffic_statistics_path, "r") as f:
+            s = f.read()
+        f.close()
+
+        dic = json.loads(s)
+        self.__traffic_begin_time = int(dic["begin_time"])
+        self.__cur_traffic_size = int(dic["traffic_size"])
+
+    def reset_traffic(self):
+        now = time.time()
+        if now - self.__traffic_up_time > 86400 * 30:
+            self.__traffic_begin_time = now
+            self.__cur_traffic_size = 0
+            return
+        ''''''
+
+    def have_traffic(self):
+        """是否还有流量
+        """
+        if self.__limit_traffic_size <= 0: return True
+        if self.__cur_traffic_size >= self.__limit_traffic_size: return False
+
+        return True
 
 
 def __start_service(mode, debug):
