@@ -628,23 +628,26 @@ class _fdslight_client(dispatcher.dispatcher):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = nameserves
 
+        resolver.timeout = 5
+        resolver.lifetime = 5
+
         try:
-            if enable_ipv6:
-                rs = resolver.resolve(host, "AAAA")
-            else:
-                rs = resolver.resolve(host, "A")
-        # API回退
-        except AttributeError:
-            if enable_ipv6:
-                rs = resolver.query(host, "AAAA")
-            else:
-                rs = resolver.query(host, "A")
-        except dns.resolver.NoAnswer:
-            return None
-        except dns.resolver.Timeout:
-            return None
-        except dns.resolver.NoNameservers:
-            return None
+            try:
+                if enable_ipv6:
+                    rs = resolver.resolve(host, "AAAA")
+                else:
+                    rs = resolver.resolve(host, "A")
+                ''''''
+            except AttributeError:
+                try:
+                    if enable_ipv6:
+                        rs = resolver.query(host, "AAAA")
+                    else:
+                        rs = resolver.query(host, "A")
+                    ''''''
+                except:
+                    return None
+                ''''''
         except:
             return None
 
