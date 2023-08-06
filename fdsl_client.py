@@ -113,14 +113,30 @@ class _fdslight_client(dispatcher.dispatcher):
         enable_https_sni = bool(int(configs.get("enable_https_sni", 0)))
         https_sni_host = configs.get("https_sni_host", "")
         strict_https = bool(int(configs.get("strict_https", "0")))
+        ciphers = configs.get("ciphers", "NULL")
 
+        if ciphers.upper() != "NULL":
+            if ciphers[-1] == ",": ciphers = ciphers[0:-1]
+            ciphers = ciphers.strip()
+            if not ciphers:
+                ciphers = "NULL"
+            else:
+                _list = ciphers.split(",")
+                new_list = []
+                for s in _list:
+                    s = s.strip()
+                    new_list.append(s)
+                ciphers = ":".join(new_list)
+            ''''''
         pyo = {
             "url": configs.get("url", "/"),
             "auth_id": configs.get("auth_id", "fdslight"),
             "enable_https_sni": enable_https_sni,
             "https_sni_host": https_sni_host,
             "strict_https": strict_https,
+            "ciphers": ciphers,
         }
+        print(ciphers)
 
         return pyo
 
@@ -692,7 +708,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if t - self.__traffic_up_time > 60:
             self.flush_traffic_statistics()
             self.reset_traffic()
-            self.__traffic_up_time=t
+            self.__traffic_up_time = t
 
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()

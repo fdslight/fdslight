@@ -68,17 +68,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             context = ssl.SSLContext(ssl.PROTOCOL_TLS)
             self.__context = context
 
-            if ciphers.upper() != "NULL":
-                if ciphers[-1] == ",": ciphers = ciphers[0:-1]
-                _list = ciphers.split(",")
-                new_list = []
-                for s in _list:
-                    s = s.strip()
-                    new_list.append(s)
-                context.set_ciphers(
-                    ":".join(new_list)
-                )
-                print(new_list)
+            if ciphers.upper() != "NULL": context.set_ciphers(ciphers)
 
             context.set_alpn_protocols(["http/1.1"])
 
