@@ -339,12 +339,8 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                     ("Sec-WebSocket-Version", 13,), ("Sec-WebSocket-Key", self.rand_string(),),
                     ("Sec-WebSocket-Protocol", "chat")]
 
-        if int(self.__server_address[1]) == 443:
-            host = ("Host", self.__server_address[0],)
-            origin = ("Origin", "https://%s" % self.__server_address[0])
-        else:
-            host = ("Host", "%s:%s" % self.__server_address,)
-            origin = ("Origin", "https://%s:%s" % self.__server_address,)
+        host = ("Host", self.__https_sni_host,)
+        origin = ("Origin", "https://%s" % self.__https_sni_host)
 
         kv_pairs.append(host)
         kv_pairs.append(origin)
