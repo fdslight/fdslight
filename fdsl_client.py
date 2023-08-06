@@ -136,7 +136,6 @@ class _fdslight_client(dispatcher.dispatcher):
             "strict_https": strict_https,
             "ciphers": ciphers,
         }
-        print(ciphers)
 
         return pyo
 
