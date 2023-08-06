@@ -69,11 +69,16 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             self.__context = context
 
             if ciphers.upper() != "NULL":
-                if ciphers[-1]==",":ciphers=ciphers[0:-1]
+                if ciphers[-1] == ",": ciphers = ciphers[0:-1]
                 _list = ciphers.split(",")
+                new_list = []
+                for s in _list:
+                    s = s.strip()
+                    new_list.append(s)
                 context.set_ciphers(
-                    ":".join(ciphers)
+                    ":".join(new_list)
                 )
+                print(new_list)
 
             context.set_alpn_protocols(["http/1.1"])
 
