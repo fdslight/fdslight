@@ -82,6 +82,7 @@ int subnet_calc_with_prefix(unsigned char *address,unsigned char prefix,int is_i
     return subnet_calc_with_msk(address,msk,is_ipv6,res);
 }
 
+inline 
 int subnet_calc_with_msk(unsigned char *address,unsigned char *msk,int is_ipv6,unsigned char *res)
 {
     size_t size=4;
@@ -101,6 +102,7 @@ int subnet_calc_with_msk(unsigned char *address,unsigned char *msk,int is_ipv6,u
     return 0;
 }
 
+inline 
 unsigned short csum_calc_incre(unsigned short old_field,unsigned short new_field,unsigned short old_csum)
 {
     unsigned long csum = old_csum - (~old_field & 0xFFFF) - new_field ;
@@ -335,9 +337,62 @@ __NETUTIL_COPY_ADDR:
     else memcpy(iphdr->dst_addr,new_addr,4);
 }
 
-void rewrite_ip6_addr(struct netutil_ip6hdr *ip6hr,unsigned char new_addr,int is_src)
+void rewrite_ip6_addr(struct netutil_ip6hdr *ip6hdr,unsigned char *new_addr,int is_src)
 {
-    
+    unsigned char old_addr[16];
+    unsigned char *csum_ptr=NULL;
+    unsigned short csum;
+    unsigned char *ptr=(unsigned char *)(ip6hdr);
+    unsigned short *old_u16addr,*new_u16addr=(unsigned short *)new_addr;
+    unsigned char next_header=ip6hdr->next_header;
+    struct netutil_ip6_frag_header *frag_header;
+
+    int flags=1;
+    int x=40;
+
+    if(is_src) {
+        memcpy(old_addr,ip6hdr->src_addr,16);
+        memcpy(ip6hdr->src_addr,new_addr,16);
+    }else{
+        memcpy(old_addr,ip6hdr->dst_addr,16);
+        memcpy(ip6hdr->dst_addr,new_addr,16);    
+    }
+
+    old_u16addr=(unsigned short *)(old_addr);
+
+    if(next_header==44){
+        frag_header=(struct netutil_ip6_frag_header *)(((char *)ip6hdr)+40);
+        next_header=frag_header->next_header;
+        x+=8;
+    }
+
+    switch(next_header){
+        case 6:
+            csum_ptr=ptr+x+16;
+            break;
+        case 17:
+            csum_ptr=ptr+x+6;
+            break;
+        case 44:
+            break;
+        case 58:
+            csum_ptr=ptr+x+2;
+            break;
+        default:
+            flags=0;
+            break;
+    }
+
+    // 不需要重写传输层校验和直接跳过
+    if(!flags) return;
+
+    memcpy(&csum,csum_ptr,2);
+
+    for(int n=0;n<8;n++){
+        csum=csum_calc_incre(*old_u16addr++,*new_u16addr++,csum);
+    }
+
+    memcpy(csum_ptr,&csum,2);
 }
 
 int is_same_subnet(unsigned char *address,unsigned char *subnet,unsigned char prefix,int is_ipv6)
