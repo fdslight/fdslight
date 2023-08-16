@@ -149,7 +149,7 @@ int check_ippkt_is_ok(struct netutil_iphdr *iphdr);
 /// 重写IP地址,is_src不为0表示重写源地址,否则重写目标地址
 void rewrite_ip_addr(struct netutil_iphdr *iphdr,unsigned char *new_addr,int is_src);
 /// 重写IPv6地址
-void rewrite_ip6_addr(struct netutil_ip6hdr *ip6hr,unsigned char new_addr,int is_src);
+void rewrite_ip6_addr(struct netutil_ip6hdr *ip6hdr,unsigned char *new_addr,int is_src);
 /// 检查是否在同一个子网内
 int is_same_subnet(unsigned char *address,unsigned char *subnet,unsigned char prefix,int is_ipv6);
 int is_same_subnet_with_msk(unsigned char *address,unsigned char *subnet,unsigned char *mask,int is_ipv6);
