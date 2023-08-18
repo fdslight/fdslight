@@ -55,7 +55,7 @@ goo.gl:1
 *.paypal.com:1
 *.paypalobjects.com:1
 *.duckduckgo.com:1
-chat.openai.com:1
+*.openai.com:1
 *.discord.com:1
 *.discordapp.net:1
 
