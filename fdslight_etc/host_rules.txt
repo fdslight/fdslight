@@ -318,9 +318,8 @@ login.oracle.com:1
 *.xinsheng.net:1
 *.goodtv.tv:1
 
-### 政府机构
-# 中华民国政府
-*.gov.tw:1
+# 中华民国
+*.tw:1
 
 ### 加快访问速度
 *.mit.edu:1
