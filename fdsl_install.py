@@ -35,8 +35,21 @@ def __build_fdsl_racs(cflags):
     )
 
 
+def find_python_include_path():
+    files = os.listdir("/usr/include")
+    result = ""
+
+    for f in files:
+        p = f.find("python3")
+        if p < 0: continue
+        result = "/usr/include/%s" % f
+        break
+
+    return result
+
+
 def build_client(cflags, gw_mode=False):
-    cflags+=" -O3 -Wall"
+    cflags += " -O3 -Wall"
     __build_fn_utils(cflags)
     __build_fdsl_ctl(cflags)
     __build_fdsl_racs(cflags)
@@ -59,11 +72,11 @@ def build_client(cflags, gw_mode=False):
 
 def main():
     help_doc = """
-    gateway | local   python3_include
+    gateway | local [python3_include]
     """
 
     argv = sys.argv[1:]
-    if len(argv) != 2:
+    if len(argv) < 1 or len(argv) > 2:
         print(help_doc)
         return
 
@@ -73,11 +86,16 @@ def main():
         print("the mode must be gateway or local")
         return
 
-    if not os.path.isdir(argv[1]):
-        print("not found directory %s" % argv[1])
+    if len(argv) == 1:
+        py_include = find_python_include_path()
+    else:
+        py_include = argv[1]
+
+    if not os.path.isdir(py_include):
+        print("ERROR:not found python header file %s" % py_include)
         return
 
-    cflags = " -I %s" % "".join(argv[1:])
+    cflags = " -I %s" % py_include
 
     if mode == "gateway":
         build_client(cflags, gw_mode=True)
