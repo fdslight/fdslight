@@ -273,6 +273,7 @@ security.debian.org:1
 *.medium.com:1
 *.vultr.com:0
 *.stripe.com:0
+*.notepad-plus-plus.org:1
 
 
 ### 书籍文化
