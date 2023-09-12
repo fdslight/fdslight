@@ -29,7 +29,8 @@ def check():
     return
 
 def main():
+    print("------------------check start------------------")
     check()
-    print("------------------check complete------------------")
+    print("------------------check finish-----------------")
 
 if __name__ == '__main__': main()
