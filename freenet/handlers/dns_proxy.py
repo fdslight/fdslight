@@ -248,7 +248,7 @@ class dnsc_proxy(dns_base):
         for rule in rules: 
             is_match,flags=self.__host_match.match(rule[0])
             if not is_match:self.__host_match.add_rule(rule)
-            else:logging.print_error("conflict host rule %s" % rule[0])
+            else:logging.print_error("WARNING:conflict host rule %s" % rule[0])
         return
 
     def set_ip_rules(self, rules):
