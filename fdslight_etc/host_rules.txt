@@ -173,6 +173,9 @@ podcasts.captivate.fm:1
 *.twnextdigital.com:1
 *.nxtdig.com.hk:1
 
+*.landofhope.tv:1
+*.purespring.tv:1
+
 # 网络存储
 *.dropbox.com:1
 *.dropboxstatic.com:0
@@ -260,6 +263,7 @@ security.debian.org:1
 *.medium.com:1
 *.vultr.com:0
 *.stripe.com:0
+*.rubiconproject.com:1
 
 
 ### 书籍文化
