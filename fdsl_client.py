@@ -780,6 +780,7 @@ class _fdslight_client(dispatcher.dispatcher):
             return
 
         cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__DEVNAME)
+        print(cmd)
         os.system(cmd)
 
         if not is_dynamic:
