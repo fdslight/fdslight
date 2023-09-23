@@ -760,12 +760,15 @@ class _fdslight_client(dispatcher.dispatcher):
         if not self.__enable_ipv6_traffic and is_ipv6: return
         if is_ipv6:
             s = "-6"
-            if not prefix: prefix = 128
-            n = prefix
+            if prefix is None: prefix = 128
         else:
             s = ""
-            if not prefix: prefix = 32
-            n = prefix
+            if prefix is None: prefix = 32
+
+        if is_ipv6:
+            n = 128
+        else:
+            n = 32
 
         # 首先查看是否已经加了永久路由
         while n > 0:
@@ -777,7 +780,6 @@ class _fdslight_client(dispatcher.dispatcher):
             return
 
         cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__DEVNAME)
-        print(cmd)
         os.system(cmd)
 
         if not is_dynamic:
@@ -786,6 +788,7 @@ class _fdslight_client(dispatcher.dispatcher):
             return
 
         if not timeout: timeout = self.__ROUTE_TIMEOUT
+
         self.__route_timer.set_timeout(host, timeout)
         self.__routes[host] = is_ipv6
 
