@@ -761,14 +761,11 @@ class _fdslight_client(dispatcher.dispatcher):
         if is_ipv6:
             s = "-6"
             if not prefix: prefix = 128
+            n = prefix
         else:
             s = ""
             if not prefix: prefix = 32
-
-        if is_ipv6:
-            n = 128
-        else:
-            n = 32
+            n = prefix
 
         # 首先查看是否已经加了永久路由
         while n > 0:
