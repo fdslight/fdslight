@@ -120,10 +120,10 @@ class host_match(object):
         self.__rule_tree = {}
         self.__rules = {}
 
-# cls = matcher()
-# cls.add_rule("*.facebook.com", "drop")
+#cls = host_match()
+#cls.add_rule(("*.google.com",1))
 # cls.add_rule("*.google.com", "this is action")
 # cls.add_rule("*", "this is action")
 # print(cls.rules)
 # print(cls.rule_tree)
-# print(cls.match("www.facebook.com"))
+# print(cls.match("www.google.com"))
