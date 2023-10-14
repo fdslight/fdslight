@@ -111,6 +111,7 @@ podcasts.captivate.fm:1
 *.vimeo.com:1
 *.shenyuncreations.com:1
 *.shenyunperformingarts.org:1
+*.ntdfilms.com:1
 
 # 博客
 *.wordpress.com:1
