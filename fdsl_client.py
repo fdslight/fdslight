@@ -30,6 +30,8 @@ import dns.resolver
 
 _MODE_GW = 1
 _MODE_LOCAL = 2
+_MODE_PROXY_ALL_IP4 = 3
+_MODE_PROXY_ALL_IP6 = 4
 
 # 自动日志清理时间
 AUTO_LOG_CLEAN_TIME = 3600
@@ -177,6 +179,10 @@ class _fdslight_client(dispatcher.dispatcher):
         if mode == "local":
             self.__mode = _MODE_LOCAL
             self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
+        elif mode == "proxy_all_ipv4":
+            self.__mode = _MODE_PROXY_ALL_IP4
+        elif mode == "proxy_all_ipv6":
+            self.__mode = _MODE_PROXY_ALL_IP6
         else:
             self.__mode = _MODE_GW
             self.__load_kernel_mod()
@@ -200,12 +206,17 @@ class _fdslight_client(dispatcher.dispatcher):
                 self.__dns_listen6 = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind6"],
                                                          debug=debug, server_side=True, is_ipv6=True)
                 self.get_handler(self.__dns_listen6).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
+        elif self.__mode == _MODE_PROXY_ALL_IP4:
+            pass
+        elif self.__mode == _MODE_PROXY_ALL_IP6:
+            pass
         else:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], debug=debug,
                                                     server_side=False)
-        self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
 
-        self.__set_rules(None, None)
+        if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
+            self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
+            self.__set_rules(None, None)
 
         if self.__mode == _MODE_GW:
             udp_global = bool(int(gateway["dgram_global_proxy"]))
@@ -214,6 +225,12 @@ class _fdslight_client(dispatcher.dispatcher):
                                                                 self.__configs["gateway"],
                                                                 enable_ipv6=self.__enable_ipv6_traffic)
             ''''''
+        elif self.__mode == _MODE_PROXY_ALL_IP4:
+            # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
+            self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
+        elif self.__mode == _MODE_PROXY_ALL_IP6:
+            # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
+            self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
         else:
             local = configs["local"]
             vir_dns = local["virtual_dns"]
@@ -482,6 +499,9 @@ class _fdslight_client(dispatcher.dispatcher):
         return self.__session_id
 
     def __set_rules(self, signum, frame):
+        if self.__mode in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
+            sys.stderr.write("proxy_all mode not support set rules")
+            return
         fpaths = [
             "%s/fdslight_etc/host_rules.txt" % BASE_DIR,
             "%s/fdslight_etc/ip_rules.txt" % BASE_DIR,
@@ -566,6 +586,21 @@ class _fdslight_client(dispatcher.dispatcher):
         if not self.have_traffic():
             logging.print_error("not enough traffic for tunnel")
             return
+
+        if self.__mode == _MODE_PROXY_ALL_IP6 and netutils.is_ipv6_address(host):
+            logging.print_error("conflict,remote host is ipv6 address for proxy_all_ipv6")
+            return
+
+        if self.__mode == _MODE_PROXY_ALL_IP4 and netutils.is_ipv4_address(host):
+            logging.print_error("conflict,remote host is ipv4 address for proxy_all_ipv4")
+            return
+
+        if self.__mode == _MODE_PROXY_ALL_IP4:
+            enable_ipv6 = True
+        elif self.__mode == _MODE_PROXY_ALL_IP6:
+            enable_ipv6 = False
+        else:
+            pass
 
         is_udp = False
 
@@ -725,10 +760,10 @@ class _fdslight_client(dispatcher.dispatcher):
         if not self.__enable_ipv6_traffic and is_ipv6: return
         if is_ipv6:
             s = "-6"
-            if not prefix: prefix = 128
+            if prefix is None: prefix = 128
         else:
             s = ""
-            if not prefix: prefix = 32
+            if prefix is None: prefix = 32
 
         if is_ipv6:
             n = 128
@@ -753,6 +788,7 @@ class _fdslight_client(dispatcher.dispatcher):
             return
 
         if not timeout: timeout = self.__ROUTE_TIMEOUT
+
         self.__route_timer.set_timeout(host, timeout)
         self.__routes[host] = is_ipv6
 
@@ -800,7 +836,7 @@ class _fdslight_client(dispatcher.dispatcher):
             os.chdir("%s/driver" % BASE_DIR)
             os.system("rmmod fdslight_dgram")
             os.chdir("../")
-        else:
+        if self.__mode == _MODE_LOCAL:
             self.__os_resolv.write_to_file(self.__os_resolv_backup)
         sys.exit(0)
 
@@ -1027,7 +1063,7 @@ def __reset_traffic():
 def main():
     help_doc = """
     -d      debug | start | stop    debug,start or stop application
-    -m      local | gateway         run as local or gateway
+    -m      local | gateway | proxy_all_ipv4 | proxy_all_ipv6 
     -u      rules | reset_traffic    update host and ip rules or reset traffic
     """
     try:
@@ -1065,7 +1101,7 @@ def main():
         print(help_doc)
         return
 
-    if m not in ("local", "gateway"):
+    if m not in ("local", "gateway", "proxy_all_ipv4", "proxy_all_ipv6",):
         print(help_doc)
         return
 
