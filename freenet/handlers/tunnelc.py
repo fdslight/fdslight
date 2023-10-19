@@ -511,10 +511,10 @@ class udp_tunnel(udp_handler.udp_handler):
         return True
 
     def udp_readable(self, message, address):
-        print(message,address)
         if self.__server_from_nat:
             # 服务器发送了"\0"视为通过
             if message == "\0":
+                print("PASS")
                 if not self.__server_address: return
 
                 self.__update_time = time.time()
