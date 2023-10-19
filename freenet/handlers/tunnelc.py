@@ -572,6 +572,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def send_msg_to_tunnel(self, session_id, action, message):
         # 开启此选项并且未收到对端UDP数据包那么不发送数据
+        if not message: return
         if self.__only_permit_send_udp_data_when_first_recv_peer and not self.__is_received_udp_first: return
 
         ippkts = self.__encrypt.build_packets(session_id, action, message, redundancy=self.__redundancy)
