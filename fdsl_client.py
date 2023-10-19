@@ -581,6 +581,8 @@ class _fdslight_client(dispatcher.dispatcher):
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
 
+        server_host_from_nat = bool(int(conn.get("server_host_from_nat", 0)))
+
         only_permit_send_udp_data_when_first_recv_peer = bool(
             int(conn.get("only_permit_send_udp_data_when_first_recv_peer", 0)))
 
@@ -640,6 +642,7 @@ class _fdslight_client(dispatcher.dispatcher):
         else:
             kwargs["bind_udp_local_port"] = bind_udp_local_port
             kwargs["only_permit_send_udp_data_when_first_recv_peer"] = only_permit_send_udp_data_when_first_recv_peer
+            kwargs["server_host_from_nat"] = server_host_from_nat
 
         if tunnel_type.lower() == "udp": kwargs["redundancy"] = redundancy
 

@@ -426,6 +426,7 @@ class udp_tunnel(udp_handler.udp_handler):
     __sent_queue = None
 
     __server_address = None
+    __server_port = None
     __redundancy = None
 
     __enable_heartbeat = None
@@ -433,6 +434,7 @@ class udp_tunnel(udp_handler.udp_handler):
     __bind_local_port = None
     __only_permit_send_udp_data_when_first_recv_peer = None
     __is_recevied_udp_first = None
+    __server_from_nat = None
 
     __is_ipv6 = None
 
@@ -465,6 +467,7 @@ class udp_tunnel(udp_handler.udp_handler):
         self.__bind_local_port = 0
         self.__only_permit_send_udp_data_when_first_recv_peer = kwargs["only_permit_send_udp_data_when_first_recv_peer"]
         self.__bind_local_port = kwargs["bind_udp_local_port"]
+        self.__server_from_nat = kwargs["server_host_from_nat"]
         self.__is_recevied_udp_first = False
 
         if 0 < self.__bind_local_port < 0xffff:
@@ -476,6 +479,15 @@ class udp_tunnel(udp_handler.udp_handler):
         return self.fileno
 
     def create_tunnel(self, server_address):
+        if self.__server_from_nat:
+            self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
+            self.__update_time = time.time()
+            self.register(self.fileno)
+            self.add_evt_read(self.fileno)
+            self.dispatcher.tunnel_conn_ok()
+
+            return True
+
         server_ip = self.dispatcher.get_server_ip(server_address[0])
 
         if not server_ip: return False
@@ -500,7 +512,14 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def udp_readable(self, message, address):
         self.__is_recevied_udp_first = True
-
+        if self.__server_from_nat:
+            if message == "\0":
+                self.__server_address = address[0]
+                self.__server_port = address[1]
+                # 允许发送隧道数据包
+                self.__only_permit_send_udp_data_when_first_recv_peer = True
+            ''''''
+        if not self.__server_address: return
         result = self.__decrypt.parse(message)
         if not result: return
 
