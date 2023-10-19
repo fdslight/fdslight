@@ -430,12 +430,18 @@ class udp_tunnel(udp_handler.udp_handler):
 
     __enable_heartbeat = None
     __heartbeat_timeout = None
+    __bind_local_port = None
+
+    __is_ipv6 = None
 
     def init_func(self, creator, crypto, crypto_configs, redundancy=False, conn_timeout=720, is_ipv6=False, **kwargs):
         if is_ipv6:
             fa = socket.AF_INET6
+            self.__is_ipv6 = True
         else:
             fa = socket.AF_INET
+            self.__is_ipv6 = False
+
         self.__redundancy = redundancy
 
         s = socket.socket(fa, socket.SOCK_DGRAM)
@@ -453,6 +459,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
         self.__enable_heartbeat = kwargs.get("enable_heartbeat", False)
         self.__heartbeat_timeout = kwargs.get("heartbeat_timeout", 15)
+        self.__bind_local_port = 0
 
         return self.fileno
 
@@ -462,6 +469,12 @@ class udp_tunnel(udp_handler.udp_handler):
         if not server_ip: return False
 
         try:
+            if 0 < self.__bind_local_port < 0xffff:
+                if self.__is_ipv6:
+                    self.bind(("::", self.__bind_local_port))
+                else:
+                    self.bind(("0.0.0.0", self.__bind_local_port))
+                ''''''
             self.connect((server_ip, server_address[1]))
         except socket.gaierror:
             self.dispatcher.tunnel_conn_ok()
