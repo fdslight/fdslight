@@ -513,8 +513,7 @@ class udp_tunnel(udp_handler.udp_handler):
     def udp_readable(self, message, address):
         if self.__server_from_nat:
             # 服务器发送了"\0"视为通过
-            if message == "\0":
-                print("PASS")
+            if message == b"\0":
                 if not self.__server_address: return
 
                 self.__update_time = time.time()
@@ -578,6 +577,11 @@ class udp_tunnel(udp_handler.udp_handler):
         ippkts = self.__encrypt.build_packets(session_id, action, message, redundancy=self.__redundancy)
         self.__encrypt.reset()
 
-        for ippkt in ippkts: self.send(ippkt)
+        for ippkt in ippkts:
+            if self.__server_from_nat:
+                self.sendto(ippkt, (self.__server_address, self.__server_port,))
+            else:
+                self.send(ippkt)
+            ''''''
 
         self.add_evt_write(self.fileno)
