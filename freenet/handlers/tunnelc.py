@@ -449,7 +449,6 @@ class udp_tunnel(udp_handler.udp_handler):
         self.__redundancy = redundancy
 
         s = socket.socket(fa, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         self.set_socket(s)
 
