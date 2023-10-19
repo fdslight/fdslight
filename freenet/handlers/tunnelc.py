@@ -433,7 +433,7 @@ class udp_tunnel(udp_handler.udp_handler):
     __heartbeat_timeout = None
     __bind_local_port = None
     __only_permit_send_udp_data_when_first_recv_peer = None
-    __is_recevied_udp_first = None
+    __is_received_udp_first = None
     __server_from_nat = None
 
     __is_ipv6 = None
@@ -468,7 +468,7 @@ class udp_tunnel(udp_handler.udp_handler):
         self.__only_permit_send_udp_data_when_first_recv_peer = kwargs["only_permit_send_udp_data_when_first_recv_peer"]
         self.__bind_local_port = kwargs["bind_udp_local_port"]
         self.__server_from_nat = kwargs["server_host_from_nat"]
-        self.__is_recevied_udp_first = False
+        self.__is_received_udp_first = False
 
         if 0 < self.__bind_local_port < 0xffff:
             if self.__is_ipv6:
@@ -514,7 +514,7 @@ class udp_tunnel(udp_handler.udp_handler):
         if self.__server_from_nat:
             # 服务器发送了"\0"视为通过
             if message == "\0":
-                self.__is_recevied_udp_first = True
+                self.__is_received_udp_first = True
                 self.__server_address = address[0]
                 self.__server_port = address[1]
                 # 允许发送隧道数据包
@@ -522,7 +522,7 @@ class udp_tunnel(udp_handler.udp_handler):
                 logging.print_general("udp_open", address)
             ''''''
         else:
-            self.__is_recevied_udp_first = True
+            self.__is_received_udp_first = True
         if not self.__server_address: return
         result = self.__decrypt.parse(message)
         if not result: return
@@ -568,7 +568,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def send_msg_to_tunnel(self, session_id, action, message):
         # 开启此选项并且未收到对端UDP数据包那么不发送数据
-        if self.__only_permit_send_udp_data_when_first_recv_peer and not self.__is_recevied_udp_first: return
+        if self.__only_permit_send_udp_data_when_first_recv_peer and not self.__is_received_udp_first: return
 
         ippkts = self.__encrypt.build_packets(session_id, action, message, redundancy=self.__redundancy)
         self.__encrypt.reset()
