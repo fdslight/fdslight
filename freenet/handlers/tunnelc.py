@@ -511,16 +511,18 @@ class udp_tunnel(udp_handler.udp_handler):
         return True
 
     def udp_readable(self, message, address):
-        self.__is_recevied_udp_first = True
         if self.__server_from_nat:
             # 服务器发送了"\0"视为通过
             if message == "\0":
+                self.__is_recevied_udp_first = True
                 self.__server_address = address[0]
                 self.__server_port = address[1]
                 # 允许发送隧道数据包
                 self.__only_permit_send_udp_data_when_first_recv_peer = True
                 logging.print_general("udp_open", address)
             ''''''
+        else:
+            self.__is_recevied_udp_first = True
         if not self.__server_address: return
         result = self.__decrypt.parse(message)
         if not result: return
