@@ -500,6 +500,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def udp_readable(self, message, address):
         self.__is_recevied_udp_first = True
+
         result = self.__decrypt.parse(message)
         if not result: return
 
