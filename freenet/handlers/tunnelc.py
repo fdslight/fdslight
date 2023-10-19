@@ -480,6 +480,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def create_tunnel(self, server_address):
         if self.__server_from_nat:
+            print("ZZZZZ")
             self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
             self.__update_time = time.time()
             self.register(self.fileno)
