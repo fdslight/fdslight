@@ -467,6 +467,12 @@ class udp_tunnel(udp_handler.udp_handler):
         self.__bind_local_port = kwargs["bind_udp_local_port"]
         self.__is_recevied_udp_first = False
 
+        if 0 < self.__bind_local_port < 0xffff:
+            if self.__is_ipv6:
+                self.bind(("::", self.__bind_local_port))
+            else:
+                self.bind(("0.0.0.0", self.__bind_local_port))
+            ''''''
         return self.fileno
 
     def create_tunnel(self, server_address):
@@ -475,12 +481,6 @@ class udp_tunnel(udp_handler.udp_handler):
         if not server_ip: return False
 
         try:
-            if 0 < self.__bind_local_port < 0xffff:
-                if self.__is_ipv6:
-                    self.bind(("::", self.__bind_local_port))
-                else:
-                    self.bind(("0.0.0.0", self.__bind_local_port))
-                ''''''
             self.connect((server_ip, server_address[1]))
         except socket.gaierror:
             self.dispatcher.tunnel_conn_ok()
@@ -500,7 +500,6 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def udp_readable(self, message, address):
         self.__is_recevied_udp_first = True
-        print(message)
         result = self.__decrypt.parse(message)
         if not result: return
 
