@@ -514,7 +514,7 @@ class udp_tunnel(udp_handler.udp_handler):
         if self.__server_from_nat:
             # 服务器发送了"\0"视为通过
             if message == b"\0":
-                if not self.__server_address: return
+                if self.__server_address: return
 
                 self.__update_time = time.time()
                 self.__is_received_udp_first = True
