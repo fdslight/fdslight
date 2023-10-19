@@ -516,9 +516,8 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def udp_readable(self, message, address):
         if self.__server_from_nat:
-            # 服务器发送了"\0"视为通过
+            # 服务器发送了"\0"视为通过并且重置服务端地址
             if message == b"\0":
-                if self.__server_address: return
 
                 self.__update_time = time.time()
                 self.__is_received_udp_first = True
@@ -547,12 +546,18 @@ class udp_tunnel(udp_handler.udp_handler):
         self.remove_evt_write(self.fileno)
 
     def udp_error(self):
-        logging.print_general("udp_error", self.__server_address)
+        if self.__server_from_nat:
+            logging.print_general("udp_error", (self.__server_address,self.__server_port,))
+        else:
+            logging.print_general("udp_error", self.__server_address)
         self.delete_handler(self.fileno)
 
     def udp_timeout(self):
         t = time.time()
         v = t - self.__update_time
+
+        # 如果是NAT那么永远不超时
+        if self.__server_from_nat: return
 
         if v > self.__conn_timeout:
             logging.print_general("udp_timeout", self.__server_address)
@@ -570,7 +575,10 @@ class udp_tunnel(udp_handler.udp_handler):
         self.dispatcher.tell_tunnel_close()
         self.close()
         if not self.__server_address: return
-        logging.print_general("udp_close", self.__server_address)
+        if self.__server_from_nat:
+            logging.print_general("udp_close", (self.__server_address,self.__server_port,))
+        else:
+            logging.print_general("udp_close", self.__server_address)
 
     def send_msg_to_tunnel(self, session_id, action, message):
         # 开启此选项并且未收到对端UDP数据包那么不发送数据
