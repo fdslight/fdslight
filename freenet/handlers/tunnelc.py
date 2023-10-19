@@ -431,6 +431,8 @@ class udp_tunnel(udp_handler.udp_handler):
     __enable_heartbeat = None
     __heartbeat_timeout = None
     __bind_local_port = None
+    __only_permit_send_udp_data_when_first_recv_peer = None
+    __is_recevied_udp_first = None
 
     __is_ipv6 = None
 
@@ -460,6 +462,9 @@ class udp_tunnel(udp_handler.udp_handler):
         self.__enable_heartbeat = kwargs.get("enable_heartbeat", False)
         self.__heartbeat_timeout = kwargs.get("heartbeat_timeout", 15)
         self.__bind_local_port = 0
+        self.__only_permit_send_udp_data_when_first_recv_peer = kwargs["only_permit_send_udp_data_when_first_recv_peer"]
+        self.__bind_local_port = kwargs["bind_udp_local_port"]
+        self.__is_recevied_udp_first = False
 
         return self.fileno
 
@@ -494,6 +499,8 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def udp_readable(self, message, address):
         result = self.__decrypt.parse(message)
+        self.__is_recevied_udp_first = True
+
         if not result: return
 
         session_id, action, byte_data = result
@@ -536,6 +543,9 @@ class udp_tunnel(udp_handler.udp_handler):
         logging.print_general("udp_close", self.__server_address)
 
     def send_msg_to_tunnel(self, session_id, action, message):
+        # 开启此选项并且未收到对端UDP数据包那么不发送数据
+        if self.__only_permit_send_udp_data_when_first_recv_peer and not self.__is_recevied_udp_first: return
+
         ippkts = self.__encrypt.build_packets(session_id, action, message, redundancy=self.__redundancy)
         self.__encrypt.reset()
 

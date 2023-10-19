@@ -581,6 +581,15 @@ class _fdslight_client(dispatcher.dispatcher):
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
 
+        only_permit_send_udp_data_when_first_recv_peer = bool(
+            int(conn.get("only_permit_send_udp_data_when_first_recv_peer", 0)))
+
+        bind_udp_local_port = int(conn.get("bind_udp_local_port", 0))
+
+        if bind_udp_local_port != 0 and not netutils.is_port_number(bind_udp_local_port):
+            logging.print_error("wrong bind udp local port value %s" % bind_udp_local_port)
+            return
+
         self.__limit_traffic_size = int(conn.get("traffic_limit_size", "0")) * 1024 * 1024 * 1024
 
         if not self.have_traffic():
@@ -628,6 +637,9 @@ class _fdslight_client(dispatcher.dispatcher):
 
         if not is_udp:
             kwargs["tunnel_over_https"] = over_https
+        else:
+            kwargs["bind_udp_local_port"] = bind_udp_local_port
+            kwargs["only_permit_send_udp_data_when_first_recv_peer"] = only_permit_send_udp_data_when_first_recv_peer
 
         if tunnel_type.lower() == "udp": kwargs["redundancy"] = redundancy
 
