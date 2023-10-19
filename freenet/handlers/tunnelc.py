@@ -524,8 +524,6 @@ class udp_tunnel(udp_handler.udp_handler):
                 self.__is_received_udp_first = True
                 self.__server_address = address[0]
                 self.__server_port = address[1]
-                # 允许发送隧道数据包
-                self.__only_permit_send_udp_data_when_first_recv_peer = True
 
                 logging.print_general("udp_open", address)
             ''''''

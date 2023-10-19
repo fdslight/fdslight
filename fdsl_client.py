@@ -278,6 +278,13 @@ class _fdslight_client(dispatcher.dispatcher):
         signal.signal(signal.SIGUSR1, self.__set_rules)
         signal.signal(signal.SIGUSR2, self.__reset_traffic_sig)
 
+        # 如果服务端为UDP NAT地址,那么打开通道,避免一开始网络不通要过一段时间才通的情况
+        server_host_from_nat = bool(int(conn.get("server_host_from_nat", 0)))
+        tunnel_type = conn["tunnel_type"].lower()
+        if tunnel_type == "udp" and server_host_from_nat:
+            self.__open_tunnel()
+        ''''''
+
     def __load_kernel_mod(self):
         ko_file = "%s/driver/fdslight_dgram.ko" % BASE_DIR
 
