@@ -499,9 +499,9 @@ class udp_tunnel(udp_handler.udp_handler):
         return True
 
     def udp_readable(self, message, address):
-        result = self.__decrypt.parse(message)
         self.__is_recevied_udp_first = True
-
+        print(message)
+        result = self.__decrypt.parse(message)
         if not result: return
 
         session_id, action, byte_data = result
