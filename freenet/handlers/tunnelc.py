@@ -513,7 +513,7 @@ class udp_tunnel(udp_handler.udp_handler):
     def udp_readable(self, message, address):
         self.__is_recevied_udp_first = True
         if self.__server_from_nat:
-            # 服务器发送了一个字节"\0"视为通过
+            # 服务器发送了"\0"视为通过
             if message == "\0":
                 self.__server_address = address[0]
                 self.__server_port = address[1]
