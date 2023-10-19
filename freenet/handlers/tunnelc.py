@@ -470,6 +470,10 @@ class udp_tunnel(udp_handler.udp_handler):
         self.__server_from_nat = kwargs["server_host_from_nat"]
         self.__is_received_udp_first = False
 
+        # NAT情况下进行强制
+        if self.__server_from_nat:
+            self.__only_permit_send_udp_data_when_first_recv_peer = True
+
         if 0 < self.__bind_local_port < 0xffff:
             if self.__is_ipv6:
                 self.bind(("::", self.__bind_local_port))
@@ -572,7 +576,6 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def send_msg_to_tunnel(self, session_id, action, message):
         # 开启此选项并且未收到对端UDP数据包那么不发送数据
-        if not message: return
         if self.__only_permit_send_udp_data_when_first_recv_peer and not self.__is_received_udp_first: return
 
         ippkts = self.__encrypt.build_packets(session_id, action, message, redundancy=self.__redundancy)
