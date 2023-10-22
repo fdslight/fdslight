@@ -15,6 +15,7 @@ import freenet.lib.ippkts as ippkts
 import freenet.lib.host_match as host_match
 import freenet.lib.ip_match as ip_match
 import freenet.lib.logging as logging
+import freenet.lib.dns_utils as dns_utils
 
 
 class dns_base(udp_handler.udp_handler):
@@ -245,10 +246,12 @@ class dnsc_proxy(dns_base):
 
     def set_host_rules(self, rules):
         self.__host_match.clear()
-        for rule in rules: 
-            is_match,flags=self.__host_match.match(rule[0])
-            if not is_match:self.__host_match.add_rule(rule)
-            else:logging.print_error("WARNING:conflict host rule %s" % rule[0])
+        for rule in rules:
+            is_match, flags = self.__host_match.match(rule[0])
+            if not is_match:
+                self.__host_match.add_rule(rule)
+            else:
+                logging.print_error("WARNING:conflict host rule %s" % rule[0])
         return
 
     def set_ip_rules(self, rules):
@@ -256,6 +259,7 @@ class dnsc_proxy(dns_base):
         for subnet, prefix in rules:
             rs = self.__ip_match.add_rule(subnet, prefix)
             if not rs: logging.print_error("wrong ip format %s/%s on ip_rules" % (subnet, prefix,))
+        ''''''
 
     def set_parent_dnsserver(self, server, is_ipv6=False):
         """当作为网关模式时需要调用此函数来设置上游DNS
@@ -341,7 +345,7 @@ class dnsc_proxy(dns_base):
 
     def __handle_msg_for_request(self, saddr, daddr, sport, message, is_ipv6=False):
         size = len(message)
-        if size < 8: return
+        if size < 16: return
 
         try:
             msg = dns.message.from_wire(message)
@@ -368,8 +372,6 @@ class dnsc_proxy(dns_base):
         if pos > 0 and self.__debug: print(host)
 
         is_match, flags = self.__host_match.match(host)
-        # 如果flags为2,那么丢弃DNS请求
-        if flags == 2: return
 
         dns_id = (message[0] << 8) | message[1]
         n_dns_id = self.get_dns_id()
@@ -386,6 +388,19 @@ class dnsc_proxy(dns_base):
 
         message = bytes(L)
         self.__timer.set_timeout(n_dns_id, self.__DNS_QUERY_TIMEOUT)
+
+        # 检查是否丢弃DNS请求,丢弃请求那么响应DNS请求故障码
+        if is_match:
+            if flags == 2:
+                dns_id = (message[0] << 8) | message[1]
+                if dns_utils.is_aaaa_request(message):
+                    is_ipv6 = True
+                else:
+                    is_ipv6 = False
+                drop_msg = dns_utils.build_dns_no_such_name_response(dns_id, host, is_ipv6=is_ipv6)
+                self.__handle_msg_from_response(drop_msg)
+                return
+            ''''''
 
         if (not is_match and self.__server_side) or (is_match and flags == 3):
             self.send_message_to_handler(self.fileno, self.__udp_client, message)
