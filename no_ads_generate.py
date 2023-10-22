@@ -79,14 +79,14 @@ def gen_dns_rule(results):
     fdst = open(fname, "w")
 
     fdst.write(s)
-    fdst.write("\r\n")
-    fdst.write("###  Advertisement DNS DROP #####")
+    fdst.write("\n\n")
+    fdst.write("###  Advertisement DNS DROP #####\n\n")
 
     for host in EXTRA_ADDS:
-        fdst.write("%s\r\n" % host)
+        fdst.write("%s\n" % host)
 
     for host in results:
-        fdst.write("%s\r\n" % host)
+        fdst.write("%s\n" % host)
 
     fdst.close()
     print("generate %s OK" % fname)
