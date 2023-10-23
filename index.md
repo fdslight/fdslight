@@ -38,7 +38,7 @@ Linux机器，客户端服务端都需要Linux，python3。
 2.请详细阅读配置文件注释，上面有给了每个配置选项的具体说明  
 
 ### 启动命令的说明("|"表示或的意思)  
-sudo /opt/bin/python3 main.py -m server|gateway|local -d start|debug|stop  
+sudo /opt/bin/python3 main.py -m server|gateway|local|proxy_all_ipv4|proxy_all_ipv6 -d start|debug|stop  
 
 ### 客户端gateway模式的特别说明  
 1.网关模式本地机器无法通过代理，局域网的其他的机器可以走代理
