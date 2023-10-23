@@ -210,7 +210,9 @@ class dnsc_proxy(dns_base):
     __udp_client = None
     __is_ipv6 = False
 
-    def init_func(self, creator, address, debug=False, server_side=False, is_ipv6=False):
+    __enable_ipv6_dns_drop = None
+
+    def init_func(self, creator, address, debug=False, server_side=False, is_ipv6=False, enable_ipv6_dns_drop=False):
         if is_ipv6:
             fa = socket.AF_INET6
         else:
@@ -237,6 +239,7 @@ class dnsc_proxy(dns_base):
         self.__ip_match = ip_match.ip_match()
         self.__host_match = host_match.host_match()
         self.__dnsserver = ""
+        self.__enable_ipv6_dns_drop = enable_ipv6_dns_drop
 
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
         self.register(self.fileno)
@@ -389,6 +392,14 @@ class dnsc_proxy(dns_base):
         message = bytes(L)
         self.__timer.set_timeout(n_dns_id, self.__DNS_QUERY_TIMEOUT)
 
+        # 如果启用IPv6 DNS请求丢弃,那么丢弃DNS数据包
+        if self.__enable_ipv6_dns_drop:
+            if dns_utils.is_aaaa_request(message):
+                dns_id = (message[0] << 8) | message[1]
+                drop_msg = dns_utils.build_dns_no_such_name_response(dns_id, host, is_ipv6=True)
+                self.__handle_msg_from_response(drop_msg)
+                return
+            ''''''
         # 检查是否丢弃DNS请求,丢弃请求那么响应DNS请求故障码
         if is_match:
             if flags == 2:

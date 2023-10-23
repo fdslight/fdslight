@@ -196,15 +196,18 @@ class _fdslight_client(dispatcher.dispatcher):
         gateway = configs["gateway"]
 
         self.__enable_ipv6_traffic = bool(int(public["enable_ipv6_traffic"]))
+        enable_ipv6_dns_drop = bool(int(public.get("enable_ipv6_dns_drop", "0")))
 
         is_ipv6 = utils.is_ipv6_address(public["remote_dns"])
 
         if self.__mode == _MODE_GW:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind"], debug=debug,
-                                                    server_side=True, is_ipv6=False)
+                                                    server_side=True, is_ipv6=False,
+                                                    enable_ipv6_dns_drop=enable_ipv6_dns_drop)
             if self.__enable_ipv6_traffic:
                 self.__dns_listen6 = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind6"],
-                                                         debug=debug, server_side=True, is_ipv6=True)
+                                                         debug=debug, server_side=True, is_ipv6=True,
+                                                         enable_ipv6_dns_drop=enable_ipv6_dns_drop)
                 self.get_handler(self.__dns_listen6).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
         elif self.__mode == _MODE_PROXY_ALL_IP4:
             pass
@@ -212,7 +215,7 @@ class _fdslight_client(dispatcher.dispatcher):
             pass
         else:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], debug=debug,
-                                                    server_side=False)
+                                                    server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
 
         if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
             self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
