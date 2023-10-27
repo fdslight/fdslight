@@ -353,6 +353,7 @@ class _fdslight_client(dispatcher.dispatcher):
                                                                     self.__racs_byte_network_v4[1], is_ipv6)
             if is_racs_network:
                 if self.__racs_fd > 0:
+                    print(message)
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
 
