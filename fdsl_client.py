@@ -894,7 +894,10 @@ class _fdslight_client(dispatcher.dispatcher):
         network = self.__racs_cfg["network"]
         _type = conn["tunnel_type"].lower()
 
-        if _type not in ("tcp", "udp",): tunnel_type = "udp"
+        if _type not in ("tcp", "udp",):
+            tunnel_type = "udp"
+        else:
+            tunnel_type = _type
 
         if tunnel_type == "udp":
             h = racs.udp_tunnel
