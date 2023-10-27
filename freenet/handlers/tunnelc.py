@@ -526,7 +526,7 @@ class udp_tunnel(udp_handler.udp_handler):
                 self.sendto(b"\0", address)
                 self.add_evt_write(self.fileno)
                 
-                logging.print_general("udp_open", address)
+                #logging.print_general("udp_open", address)
             ''''''
         else:
             self.__is_received_udp_first = True
