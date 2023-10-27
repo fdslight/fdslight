@@ -909,6 +909,8 @@ class _fdslight_client(dispatcher.dispatcher):
         else:
             self.__racs_fd = self.create_handler(-1, h, (conn["host"], int(conn["port"]),), is_ipv6=False)
 
+        if self.__racs_fd < 0: return
+
         self.get_handler(self.__racs_fd).set_key(security["shared_key"])
         self.get_handler(self.__racs_fd).set_priv_key(security["private_key"])
 
@@ -929,17 +931,26 @@ class _fdslight_client(dispatcher.dispatcher):
 
         resolver = dns.resolver.Resolver()
 
+        resolver.timeout = 5
+        resolver.lifetime = 5
+
         try:
-            if enable_ipv6:
-                rs = resolver.query(host, "AAAA")
-            else:
-                rs = resolver.query(host, "A")
-        except dns.resolver.NoAnswer:
-            return None
-        except dns.resolver.Timeout:
-            return None
-        except dns.resolver.NoNameservers:
-            return None
+            try:
+                if enable_ipv6:
+                    rs = resolver.resolve(host, "AAAA")
+                else:
+                    rs = resolver.resolve(host, "A")
+                ''''''
+            except AttributeError:
+                try:
+                    if enable_ipv6:
+                        rs = resolver.query(host, "AAAA")
+                    else:
+                        rs = resolver.query(host, "A")
+                    ''''''
+                except:
+                    return None
+                ''''''
         except:
             return None
 
@@ -948,6 +959,7 @@ class _fdslight_client(dispatcher.dispatcher):
         for anwser in rs:
             ipaddr = anwser.__str__()
             break
+
         return ipaddr
 
     def load_racs_configs(self):
