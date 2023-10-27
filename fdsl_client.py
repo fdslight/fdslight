@@ -691,6 +691,9 @@ class _fdslight_client(dispatcher.dispatcher):
     def tell_tunnel_close(self):
         self.__tunnel_fileno = -1
 
+    def tell_racs_close(self):
+        self.__racs_fd = -1
+
     def get_server_ip(self, host):
         """获取服务器IP
         :param host:
@@ -885,9 +888,7 @@ class _fdslight_client(dispatcher.dispatcher):
         return path
 
     def racs_reset(self):
-        if self.__racs_fd > 0:
-            self.delete_handler(self.__racs_fd)
-        self.__racs_fd = -1
+        if self.__racs_fd > 0: return
 
         self.load_racs_configs()
 
@@ -989,9 +990,6 @@ class _fdslight_client(dispatcher.dispatcher):
             socket.inet_pton(socket.AF_INET6, netutils.ip_prefix_convert(int(prefix), is_ipv6=True))
         )
         self.__racs_cfg = configs
-
-    def tell_racs_close(self):
-        self.__racs_fd = -1
 
     def send_to_local(self, msg: bytes):
         self.send_msg_to_tun(msg)
