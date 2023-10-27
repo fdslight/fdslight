@@ -174,6 +174,8 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__traffic_statistics_path = "%s/traffic.json" % BASE_DIR
         self.__traffic_up_time = time.time()
         self.__traffic_begin_time = time.time()
+        # 加载fn_client.ini的远程DNS选项
+        self.__remote_nameservers = [self.__configs["public"]["remote_dns"]]
 
         self.load_traffic_statistics()
         self.load_racs_configs()
@@ -700,12 +702,8 @@ class _fdslight_client(dispatcher.dispatcher):
         if utils.is_ipv6_address(host): return host
 
         enable_ipv6 = bool(int(self.__configs["connection"]["enable_ipv6"]))
-        nameservers = [self.__configs["public"]["remote_dns"]]
-
-        self.__remote_nameservers = nameservers
-
         resolver = dns.resolver.Resolver()
-        resolver.nameservers = nameservers
+        resolver.nameservers = self.__remote_nameservers
 
         resolver.timeout = 5
         resolver.lifetime = 5
