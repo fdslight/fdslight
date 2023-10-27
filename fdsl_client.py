@@ -109,6 +109,8 @@ class _fdslight_client(dispatcher.dispatcher):
     __traffic_up_time = None
     __traffic_begin_time = None
 
+    __remote_nameservers = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -698,10 +700,12 @@ class _fdslight_client(dispatcher.dispatcher):
         if utils.is_ipv6_address(host): return host
 
         enable_ipv6 = bool(int(self.__configs["connection"]["enable_ipv6"]))
-        nameserves = [self.__configs["public"]["remote_dns"]]
+        nameservers = [self.__configs["public"]["remote_dns"]]
+
+        self.__remote_nameservers = nameservers
 
         resolver = dns.resolver.Resolver()
-        resolver.nameservers = nameserves
+        resolver.nameservers = nameservers
 
         resolver.timeout = 5
         resolver.lifetime = 5
@@ -931,6 +935,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         resolver = dns.resolver.Resolver()
 
+        resolver.nameservers = self.__remote_nameservers
         resolver.timeout = 5
         resolver.lifetime = 5
 
