@@ -518,12 +518,14 @@ class udp_tunnel(udp_handler.udp_handler):
         if self.__server_from_nat:
             # 服务器发送了"\0"视为通过并且重置服务端地址
             if message == b"\0":
-
                 self.__update_time = time.time()
                 self.__is_received_udp_first = True
                 self.__server_address = address[0]
                 self.__server_port = address[1]
 
+                self.sendto(b"\0", address)
+                self.add_evt_write(self.fileno)
+                
                 logging.print_general("udp_open", address)
             ''''''
         else:
@@ -547,7 +549,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
     def udp_error(self):
         if self.__server_from_nat:
-            logging.print_general("udp_error", (self.__server_address,self.__server_port,))
+            logging.print_general("udp_error", (self.__server_address, self.__server_port,))
         else:
             logging.print_general("udp_error", self.__server_address)
         self.delete_handler(self.fileno)
@@ -576,7 +578,7 @@ class udp_tunnel(udp_handler.udp_handler):
         self.close()
         if not self.__server_address: return
         if self.__server_from_nat:
-            logging.print_general("udp_close", (self.__server_address,self.__server_port,))
+            logging.print_general("udp_close", (self.__server_address, self.__server_port,))
         else:
             logging.print_general("udp_close", self.__server_address)
 
