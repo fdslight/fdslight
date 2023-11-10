@@ -898,7 +898,7 @@ class _fdslight_client(dispatcher.dispatcher):
         """
         self.load_racs_configs()
         conn = self.__racs_cfg["connection"]
-        if conn["enable"]: return False
+        if not conn["enable"]: return False
         network = self.__racs_cfg["network"]
         ip_route = network["ip_route"]
         ip6_route = network["ip6_route"]
