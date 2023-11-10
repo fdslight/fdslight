@@ -269,6 +269,7 @@ security.debian.org:1
 *.cdn.cloudflare.net:1
 *.greatfire.org:1
 *.freebrowser.org:1
+*.godaddy.com:1
 
 ### 书籍文化
 *.pressstore.com.tw:1
