@@ -579,6 +579,8 @@ class _fdslight_client(dispatcher.dispatcher):
 
         # 删除需要删除的路由
         for subnet, prefix, is_ipv6 in need_dels:
+            # 略过racs路由
+            if self.is_racs_route(subnet, prefix, is_ipv6=is_ipv6): continue
             self.__del_route(subnet, prefix=prefix, is_ipv6=is_ipv6, is_dynamic=False)
 
         # 增加需要增加的路由
@@ -886,6 +888,25 @@ class _fdslight_client(dispatcher.dispatcher):
         """
         path = "%s/fdslight_etc/ca-bundle.crt" % BASE_DIR
         return path
+
+    def is_racs_route(self, subnet, prefix, is_ipv6=False):
+        """检查是否是racs路由
+        :param subnet:
+        :param prefix:
+        :param is_ipv6:
+        :return:
+        """
+        self.load_racs_configs()
+        conn = self.__racs_cfg["connection"]
+        if conn["enable"]: return False
+        network = self.__racs_cfg["network"]
+        ip_route = network["ip_route"]
+        ip6_route = network["ip6_route"]
+
+        s = "%s/%s" % (subnet, prefix)
+        if is_ipv6: return s == ip6_route
+
+        return s == ip_route
 
     def racs_reset(self):
         if self.__racs_fd > 0: return
