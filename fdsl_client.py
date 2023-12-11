@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, os, time, json
+import os, getopt, signal, importlib, socket, sys, time, json
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -16,7 +16,6 @@ import freenet.lib.utils as utils
 import freenet.lib.base_proto.utils as proto_utils
 import freenet.lib.proc as proc
 import freenet.handlers.tundev as tundev
-import os, getopt, signal, importlib, socket
 import freenet.handlers.dns_proxy as dns_proxy
 import freenet.lib.fdsl_ctl as fdsl_ctl
 import freenet.handlers.tunnelc as tunnelc
@@ -25,6 +24,7 @@ import freenet.handlers.traffic_pass as traffic_pass
 import freenet.lib.logging as logging
 import freenet.lib.racs_cext as racs_cext
 import freenet.lib.os_resolv as os_resolv
+import freenet.lib.os_ifdev as os_ifdev
 import freenet.handlers.racs as racs
 import dns.resolver
 
@@ -111,6 +111,14 @@ class _fdslight_client(dispatcher.dispatcher):
 
     __remote_nameservers = None
 
+    # racs IP重写
+    __local_ip_info = None
+    __local_ip_update = None
+    # 最近发包的本地IP地址
+    __last_local_ip = None
+    # 最近发包的本地IPv6地址
+    __last_local_ip6 = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -176,6 +184,9 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__traffic_begin_time = time.time()
         # 加载fn_client.ini的远程DNS选项
         self.__remote_nameservers = [self.__configs["public"]["remote_dns"]]
+
+        self.__local_ip_update = time.time()
+        self.__local_ip_info = {}
 
         self.load_traffic_statistics()
         self.load_racs_configs()
@@ -352,6 +363,7 @@ class _fdslight_client(dispatcher.dispatcher):
                 is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
                                                                     self.__racs_byte_network_v4[1], is_ipv6)
             if is_racs_network:
+                self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
@@ -430,6 +442,7 @@ class _fdslight_client(dispatcher.dispatcher):
         ip_ver = self.__mbuf.ip_version()
         if ip_ver not in (4, 6,): return
 
+        self.rewrite_racs_local_ip(message,is_src=False)
         self.send_msg_to_tun(message)
 
     def send_msg_to_other_dnsservice_for_dns_response(self, message, is_ipv6=False):
@@ -896,7 +909,6 @@ class _fdslight_client(dispatcher.dispatcher):
         :param is_ipv6:
         :return:
         """
-        self.load_racs_configs()
         conn = self.__racs_cfg["connection"]
         if not conn["enable"]: return False
         network = self.__racs_cfg["network"]
@@ -907,6 +919,66 @@ class _fdslight_client(dispatcher.dispatcher):
         if is_ipv6: return s == ip6_route
 
         return s == ip_route
+
+    def rewrite_racs_local_ip(self, netpkt: bytes, is_src=False):
+        version = (netpkt[0] & 0xf0) >> 4
+        network = self.racs_configs["network"]
+
+        if version == 6:
+            is_ipv6 = True
+            if is_src:
+                byte_addr = netpkt[8:24]
+            else:
+                byte_addr = netpkt[24:40]
+            local_addr = network["byte_local_rewrite_ip6"]
+        else:
+            is_ipv6 = False
+            if is_src:
+                byte_addr = netpkt[12:16]
+            else:
+                byte_addr = netpkt[16:20]
+            local_addr = network["byte_local_rewrite_ip"]
+
+        if is_src:
+            if not self.__is_local_ip(byte_addr): return netpkt
+            if is_ipv6:
+                self.__last_local_ip6 = byte_addr
+            else:
+                self.__last_local_ip = byte_addr
+
+            racs_cext.modify_ip_address_from_netpkt(netpkt, local_addr, is_src, is_ipv6)
+            return netpkt
+
+        if is_ipv6:
+            if not self.__last_local_ip6: return netpkt
+            racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6, is_src, is_ipv6)
+            return netpkt
+
+        if not self.__last_local_ip: return netpkt
+        racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip, is_src, is_ipv6)
+        return netpkt
+
+    def __is_local_ip(self, byte_addr: bytes):
+        now = time.time()
+        if now - self.__local_ip_update > 60:
+            self.__update_local_ip()
+        if not self.__local_ip_info:
+            self.__update_local_ip()
+
+        return byte_addr in self.__local_ip_info
+
+    def __update_local_ip(self):
+        v4_addrs, v6_addrs = os_ifdev.get_os_all_ipaddrs()
+
+        for addr in v4_addrs:
+            byte_addr = socket.inet_pton(socket.AF_INET, addr)
+            self.__local_ip_info[byte_addr] = None
+
+        for addr in v6_addrs:
+            byte_addr = socket.inet_pton(socket.AF_INET6, addr)
+            self.__local_ip_info[byte_addr] = None
+
+        return
 
     def racs_reset(self):
         if self.__racs_fd > 0: return
@@ -998,6 +1070,9 @@ class _fdslight_client(dispatcher.dispatcher):
 
         network["enable_ip6"] = bool(int(network["enable_ip6"]))
 
+        local_rewrite_ip = network.get("local_rewrite_ip", "0.0.0.0")
+        local_rewrite_ip6 = network.get("local_rewrite_ip6", "::")
+
         host, prefix = netutils.parse_ip_with_prefix(network["ip_route"])
 
         self.__racs_byte_network_v4 = (
@@ -1010,6 +1085,10 @@ class _fdslight_client(dispatcher.dispatcher):
             socket.inet_pton(socket.AF_INET6, host),
             socket.inet_pton(socket.AF_INET6, netutils.ip_prefix_convert(int(prefix), is_ipv6=True))
         )
+
+        configs["byte_local_rewrite_ip"] = socket.inet_pton(socket.AF_INET, local_rewrite_ip)
+        configs["byte_local_rewrite_ip6"] = socket.inet_pton(socket.AF_INET6, local_rewrite_ip6)
+
         self.__racs_cfg = configs
 
     def send_to_local(self, msg: bytes):

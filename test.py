@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import socket
+import freenet.lib.racs_cext as racs_cext
 
-s=socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
-s.bind(("::",8889))
-s.connect(("8888::1",8889))
-s.close()
+s = bytes(200)
+
+racs_cext.modify_ip_address_from_netpkt(s,b"ssss",True,False)
+
+print(s)

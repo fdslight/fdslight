@@ -280,14 +280,16 @@ get_netcard_ip(PyObject *self,PyObject *args)
     return Py_BuildValue("s",eth_ip);
 }
 
+
+
 static PyMethodDef UtilsMethods[] = {
-	{"tuntap_create",tuntap_create,METH_VARARGS,"create tuntap device"},
-	{"interface_up",tuntap_interface_up,METH_VARARGS,"interface up tuntap "},
-	{"set_ipaddr",tuntap_set_ipaddr,METH_VARARGS,"set tuntap ip address"},
-	{"tuntap_delete",tuntap_delete,METH_VARARGS,"delete tuntap device ,it equals close"},
-	{"calc_incre_csum",calc_incre_csum,METH_VARARGS,"calculate incremental checksum"},
-	{"calc_csum",calc_csum,METH_VARARGS,"calculate checksum"},
-	{"get_nc_ip",get_netcard_ip,METH_VARARGS,"get netcard ip address"},
+	{"tuntap_create",(PyCFunction)tuntap_create,METH_VARARGS,"create tuntap device"},
+	{"interface_up",(PyCFunction)tuntap_interface_up,METH_VARARGS,"interface up tuntap "},
+	{"set_ipaddr",(PyCFunction)tuntap_set_ipaddr,METH_VARARGS,"set tuntap ip address"},
+	{"tuntap_delete",(PyCFunction)tuntap_delete,METH_VARARGS,"delete tuntap device ,it equals close"},
+	{"calc_incre_csum",(PyCFunction)calc_incre_csum,METH_VARARGS,"calculate incremental checksum"},
+	{"calc_csum",(PyCFunction)calc_csum,METH_VARARGS,"calculate checksum"},
+	{"get_nc_ip",(PyCFunction)get_netcard_ip,METH_VARARGS,"get netcard ip address"},
 	{NULL,NULL,0,NULL}
 };
 
