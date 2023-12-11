@@ -962,7 +962,7 @@ class _fdslight_client(dispatcher.dispatcher):
             if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
                                                                                         is_src, is_ipv6)
             return netpkt
-
+        print(netpkt)
         if not self.__last_local_ip: return netpkt
         if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
                                                                                     is_src, is_ipv6)
