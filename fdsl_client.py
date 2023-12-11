@@ -964,7 +964,8 @@ class _fdslight_client(dispatcher.dispatcher):
             return netpkt
 
         if not self.__last_local_ip: return netpkt
-        print(socket.inet_ntop(socket.AF_INET,self.__last_local_ip),rewrite_local_addr,byte_addr)
+        print(socket.inet_ntop(socket.AF_INET,self.__last_local_ip),
+              socket.inet_ntop(socket.AF_INET,rewrite_local_addr),socket.inet_ntop(socket.AF_INET,byte_addr))
         if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
                                                                                     is_src, is_ipv6)
         return netpkt
