@@ -442,7 +442,7 @@ class _fdslight_client(dispatcher.dispatcher):
         ip_ver = self.__mbuf.ip_version()
         if ip_ver not in (4, 6,): return
 
-        self.rewrite_racs_local_ip(message,is_src=False)
+        self.rewrite_racs_local_ip(message, is_src=False)
         self.send_msg_to_tun(message)
 
     def send_msg_to_other_dnsservice_for_dns_response(self, message, is_ipv6=False):
@@ -962,6 +962,8 @@ class _fdslight_client(dispatcher.dispatcher):
         now = time.time()
         if now - self.__local_ip_update > 60:
             self.__update_local_ip()
+            self.__local_ip_update = now
+
         if not self.__local_ip_info:
             self.__update_local_ip()
 
