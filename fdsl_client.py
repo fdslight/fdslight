@@ -1088,8 +1088,8 @@ class _fdslight_client(dispatcher.dispatcher):
             socket.inet_pton(socket.AF_INET6, netutils.ip_prefix_convert(int(prefix), is_ipv6=True))
         )
 
-        configs["byte_local_rewrite_ip"] = socket.inet_pton(socket.AF_INET, local_rewrite_ip)
-        configs["byte_local_rewrite_ip6"] = socket.inet_pton(socket.AF_INET6, local_rewrite_ip6)
+        network["byte_local_rewrite_ip"] = socket.inet_pton(socket.AF_INET, local_rewrite_ip)
+        network["byte_local_rewrite_ip6"] = socket.inet_pton(socket.AF_INET6, local_rewrite_ip6)
 
         self.__racs_cfg = configs
 
