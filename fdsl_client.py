@@ -945,7 +945,9 @@ class _fdslight_client(dispatcher.dispatcher):
             if rewrite_local_addr == bytes(4): need_rewrite = False
 
         # 如果不需要重写,就直接返回
-        if not need_rewrite: return netpkt
+        if not need_rewrite:
+            print("ZZZ")
+            return netpkt
         if not is_src and byte_addr != rewrite_local_addr: return netpkt
 
         if is_src:
@@ -957,7 +959,6 @@ class _fdslight_client(dispatcher.dispatcher):
             racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
             return netpkt
 
-        print("ZZ----------")
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
             racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
