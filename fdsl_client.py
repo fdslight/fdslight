@@ -954,9 +954,9 @@ class _fdslight_client(dispatcher.dispatcher):
                 self.__last_local_ip6 = byte_addr
             else:
                 self.__last_local_ip = byte_addr
-
+            print("A", netpkt)
             racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
-
+            print("B", netpkt)
             return netpkt
 
         if is_ipv6:
