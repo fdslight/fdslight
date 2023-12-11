@@ -945,10 +945,10 @@ class _fdslight_client(dispatcher.dispatcher):
             if rewrite_local_addr == bytes(4): need_rewrite = False
 
         # 如果不需要重写,就直接返回
-        if not need_rewrite:
-            print("ZZZ")
+        if not need_rewrite: return netpkt
+        if not is_src and byte_addr != rewrite_local_addr:
+            print("BBB")
             return netpkt
-        if not is_src and byte_addr != rewrite_local_addr: return netpkt
 
         if is_src:
             if not self.__is_local_ip(byte_addr): return netpkt
