@@ -442,7 +442,6 @@ class _fdslight_client(dispatcher.dispatcher):
         ip_ver = self.__mbuf.ip_version()
         if ip_ver not in (4, 6,): return
 
-        message = self.rewrite_racs_local_ip(message, is_src=False)
         self.send_msg_to_tun(message)
 
     def send_msg_to_other_dnsservice_for_dns_response(self, message, is_ipv6=False):
@@ -474,6 +473,7 @@ class _fdslight_client(dispatcher.dispatcher):
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
     def send_msg_to_tun(self, message):
+        message = self.rewrite_racs_local_ip(message, is_src=False)
         self.get_handler(self.__tundev_fileno).msg_from_tunnel(message)
 
     def __is_dns_request(self):
@@ -946,9 +946,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         # 如果不需要重写,就直接返回
         if not need_rewrite: return netpkt
-        if not is_src and byte_addr != rewrite_local_addr:
-            print("BBB")
-            return netpkt
+        if not is_src and byte_addr != rewrite_local_addr: return netpkt
 
         if is_src:
             if not self.__is_local_ip(byte_addr): return netpkt
