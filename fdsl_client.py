@@ -946,7 +946,9 @@ class _fdslight_client(dispatcher.dispatcher):
 
         # 如果不需要重写,就直接返回
         if not need_rewrite: return netpkt
-        if not is_src and byte_addr != rewrite_local_addr: return netpkt
+        if not is_src and byte_addr != rewrite_local_addr:
+            print(socket.inet_ntop(socket.AF_INET,byte_addr))
+            return netpkt
 
         if is_src:
             if not self.__is_local_ip(byte_addr): return netpkt
