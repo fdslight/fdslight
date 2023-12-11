@@ -921,8 +921,11 @@ class _fdslight_client(dispatcher.dispatcher):
         return s == ip_route
 
     def rewrite_racs_local_ip(self, netpkt: bytes, is_src=False):
+
         version = (netpkt[0] & 0xf0) >> 4
         network = self.racs_configs["network"]
+
+        need_rewrite = True
 
         if version == 6:
             is_ipv6 = True
@@ -931,6 +934,7 @@ class _fdslight_client(dispatcher.dispatcher):
             else:
                 byte_addr = netpkt[24:40]
             local_addr = network["byte_local_rewrite_ip6"]
+            if local_addr == bytes(16): need_rewrite = False
         else:
             is_ipv6 = False
             if is_src:
@@ -938,6 +942,10 @@ class _fdslight_client(dispatcher.dispatcher):
             else:
                 byte_addr = netpkt[16:20]
             local_addr = network["byte_local_rewrite_ip"]
+            if local_addr == bytes(4): need_rewrite = False
+
+        # 如果不需要重写,就直接返回
+        if not need_rewrite: return netpkt
 
         if is_src:
             if not self.__is_local_ip(byte_addr): return netpkt
