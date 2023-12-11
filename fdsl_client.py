@@ -933,16 +933,16 @@ class _fdslight_client(dispatcher.dispatcher):
                 byte_addr = netpkt[8:24]
             else:
                 byte_addr = netpkt[24:40]
-            local_addr = network["byte_local_rewrite_ip6"]
-            if local_addr == bytes(16): need_rewrite = False
+            rewrite_local_addr = network["byte_local_rewrite_ip6"]
+            if rewrite_local_addr == bytes(16): need_rewrite = False
         else:
             is_ipv6 = False
             if is_src:
                 byte_addr = netpkt[12:16]
             else:
                 byte_addr = netpkt[16:20]
-            local_addr = network["byte_local_rewrite_ip"]
-            if local_addr == bytes(4): need_rewrite = False
+            rewrite_local_addr = network["byte_local_rewrite_ip"]
+            if rewrite_local_addr == bytes(4): need_rewrite = False
 
         # 如果不需要重写,就直接返回
         if not need_rewrite: return netpkt
@@ -954,16 +954,18 @@ class _fdslight_client(dispatcher.dispatcher):
             else:
                 self.__last_local_ip = byte_addr
 
-            racs_cext.modify_ip_address_from_netpkt(netpkt, local_addr, is_src, is_ipv6)
+            racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
             return netpkt
 
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
-            racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6, is_src, is_ipv6)
+            if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
+                                                                                        is_src, is_ipv6)
             return netpkt
 
         if not self.__last_local_ip: return netpkt
-        racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip, is_src, is_ipv6)
+        if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
+                                                                                    is_src, is_ipv6)
         return netpkt
 
     def __is_local_ip(self, byte_addr: bytes):
