@@ -363,7 +363,7 @@ class _fdslight_client(dispatcher.dispatcher):
                 is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
                                                                     self.__racs_byte_network_v4[1], is_ipv6)
             if is_racs_network:
-                self.rewrite_racs_local_ip(message, is_src=True)
+                message = self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
@@ -442,7 +442,7 @@ class _fdslight_client(dispatcher.dispatcher):
         ip_ver = self.__mbuf.ip_version()
         if ip_ver not in (4, 6,): return
 
-        self.rewrite_racs_local_ip(message, is_src=False)
+        message = self.rewrite_racs_local_ip(message, is_src=False)
         self.send_msg_to_tun(message)
 
     def send_msg_to_other_dnsservice_for_dns_response(self, message, is_ipv6=False):
@@ -946,6 +946,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         # 如果不需要重写,就直接返回
         if not need_rewrite: return netpkt
+        if not is_src and byte_addr != rewrite_local_addr: return netpkt
 
         if is_src:
             if not self.__is_local_ip(byte_addr): return netpkt
@@ -955,19 +956,18 @@ class _fdslight_client(dispatcher.dispatcher):
                 self.__last_local_ip = byte_addr
 
             racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
+
             return netpkt
 
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
-            if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
-                                                                                        is_src, is_ipv6)
+            racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
+                                                    is_src, is_ipv6)
             return netpkt
 
         if not self.__last_local_ip: return netpkt
-        print(socket.inet_ntop(socket.AF_INET,self.__last_local_ip),
-              socket.inet_ntop(socket.AF_INET,rewrite_local_addr),socket.inet_ntop(socket.AF_INET,byte_addr))
-        if rewrite_local_addr == byte_addr: racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
-                                                                                    is_src, is_ipv6)
+        racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
+                                                is_src, is_ipv6)
         return netpkt
 
     def __is_local_ip(self, byte_addr: bytes):
