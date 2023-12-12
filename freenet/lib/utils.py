@@ -192,7 +192,6 @@ def calc_subnet(ipaddr, prefix, is_ipv6=False):
     for n in range(r + 1):
         if n == 0: continue
         v += 2 ** (8 - n)
-
     results[q] = byte_ipaddr[q] & v
     if is_ipv6:
         return socket.inet_ntop(socket.AF_INET6, bytes(results))

@@ -56,7 +56,7 @@ def main():
             os.system(cmd)
             # 进程启动以及生成pid文件需要时间,因此这里需要休眠
             time.sleep(60)
-        time.sleep(300)
+        time.sleep(30)
 
 
 if __name__ == '__main__': main()
