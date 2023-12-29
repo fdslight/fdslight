@@ -220,6 +220,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                 if v_for_heartbeat > 5:
                     if self.debug: logging.print_general("server not response ping request", self.__server_address)
                     self.delete_handler(self.fileno)
+                    return
                 ''''''
             else:
                 if v_for_heartbeat >= self.__heartbeat_timeout:
