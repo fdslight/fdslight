@@ -774,6 +774,10 @@ class _fdslight_client(dispatcher.dispatcher):
         os.remove(LOG_FILE)
         sys.stdout = open(LOG_FILE, "a+")
 
+    @property
+    def debug(self):
+        return self.__debug
+
     def myloop(self):
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)

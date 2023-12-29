@@ -154,6 +154,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                 # 这里不更新时间,因为连接超时需要断开连接
                 if action == proto_utils.ACT_PONG:
                     self.__is_sent_heartbeat = False
+                    if self.debug:print("receive pong response from server")
                     continue
                 if action == proto_utils.ACT_PING:
                     self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PONG, proto_utils.rand_bytes())
@@ -185,6 +186,14 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__update_time = time.time()
         self.__is_sent_heartbeat = True
         self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PING, proto_utils.rand_bytes())
+
+        if self.debug:
+            print("send heartbeat ping request")
+        return
+
+    @property
+    def debug(self):
+        return self.dispatcher.debug
 
     def tcp_timeout(self):
         if not self.is_conn_ok():
