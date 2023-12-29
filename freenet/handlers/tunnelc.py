@@ -182,8 +182,6 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.delete_handler(self.fileno)
 
     def send_heartbeat(self):
-        # 发送心跳更新时间
-        self.__update_time = time.time()
         self.__is_sent_heartbeat = True
         self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PING, proto_utils.rand_bytes())
 
