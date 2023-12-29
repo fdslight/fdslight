@@ -25,6 +25,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
     __enable_heartbeat = None
     __heartbeat_timeout = None
     __is_sent_heartbeat = None
+    __heartbeat_up_time = None
 
     __ssl_handshake_ok = None
     __over_https = None
@@ -100,6 +101,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__enable_heartbeat = kwargs.get("enable_heartbeat", False)
         self.__heartbeat_timeout = kwargs.get("heartbeat_timeout", 15)
         self.__is_sent_heartbeat = False
+        self.__heartbeat_up_time = time.time()
 
         return self.fileno
 
@@ -182,6 +184,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.delete_handler(self.fileno)
 
     def send_heartbeat(self):
+        self.__heartbeat_up_time = time.time()
         self.__is_sent_heartbeat = True
         self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PING, proto_utils.rand_bytes())
 
@@ -209,14 +212,19 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             logging.print_general("connected_timeout", self.__server_address)
             return
 
+        v_for_heartbeat = t - self.__heartbeat_up_time
+
         if self.__enable_heartbeat:
-            # 发送心跳未回那么关闭连接
+            # 发送心跳超时未回就关闭连接
             if self.__is_sent_heartbeat:
-                if self.debug: logging.print_general("server not response ping request", self.__server_address)
-                self.delete_handler(self.fileno)
-                return
-            if v >= self.__heartbeat_timeout:
-                self.send_heartbeat()
+                if v_for_heartbeat > 5:
+                    if self.debug: logging.print_general("server not response ping request", self.__server_address)
+                    self.delete_handler(self.fileno)
+                ''''''
+            else:
+                if v_for_heartbeat >= self.__heartbeat_timeout:
+                    self.send_heartbeat()
+                ''''''
             ''''''
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
 
