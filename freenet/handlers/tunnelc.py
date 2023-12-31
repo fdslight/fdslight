@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """客户端隧道实现
 """
-import socket, time, ssl, random, hashlib
+import socket, time, ssl, random, hashlib, gzip
 
 import pywind.evtframework.handlers.tcp_handler as tcp_handler
 import pywind.evtframework.handlers.udp_handler as udp_handler
@@ -161,6 +161,14 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                 if action == proto_utils.ACT_PING:
                     self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PONG, proto_utils.rand_bytes())
                     continue
+
+                if action == proto_utils.ACT_GZIP_IPDATA or action == proto_utils.ACT_GZIP_DNS:
+                    message = gzip.decompress(message)
+
+                    if action == proto_utils.ACT_GZIP_IPDATA:
+                        action = proto_utils.ACT_IPDATA
+                    else:
+                        action = proto_utils.ACT_DNS
 
                 self.__update_time = time.time()
                 self.dispatcher.handle_msg_from_tunnel(session_id, action, message)
@@ -331,6 +339,19 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             self.delete_handler(self.fileno)
 
     def send_msg_to_tunnel(self, session_id, action, message):
+        if action in (proto_utils.ACT_IPDATA, proto_utils.ACT_DNS,):
+            length = len(message)
+            new_msg = gzip.compress(message)
+            comp_length = len(new_msg)
+
+            if comp_length < length:
+                message = new_msg
+                if action == proto_utils.ACT_IPDATA:
+                    action = proto_utils.ACT_GZIP_IPDATA
+                else:
+                    action = proto_utils.ACT_GZIP_DNS
+                ''''''
+            ''''''
         sent_pkt = self.__encrypt.build_packet(session_id, action, message)
 
         if self.__over_https and not self.__http_handshake_ok:
@@ -616,6 +637,19 @@ class udp_tunnel(udp_handler.udp_handler):
         # 开启此选项并且未收到对端UDP数据包那么不发送数据
         if self.__only_permit_send_udp_data_when_first_recv_peer and not self.__is_received_udp_first: return
 
+        if action in (proto_utils.ACT_IPDATA, proto_utils.ACT_DNS,):
+            length = len(message)
+            new_msg = gzip.compress(message)
+            comp_length = len(new_msg)
+
+            if comp_length < length:
+                message = new_msg
+                if action == proto_utils.ACT_IPDATA:
+                    action = proto_utils.ACT_GZIP_IPDATA
+                else:
+                    action = proto_utils.ACT_GZIP_DNS
+                ''''''
+            ''''''
         ippkts = self.__encrypt.build_packets(session_id, action, message, redundancy=self.__redundancy)
         self.__encrypt.reset()
 
