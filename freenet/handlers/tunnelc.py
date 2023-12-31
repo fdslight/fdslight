@@ -592,6 +592,14 @@ class udp_tunnel(udp_handler.udp_handler):
             self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PONG, proto_utils.rand_bytes())
             return
 
+        if action == proto_utils.ACT_GZIP_IPDATA or action == proto_utils.ACT_GZIP_DNS:
+            byte_data = gzip.decompress(byte_data)
+
+            if action == proto_utils.ACT_GZIP_IPDATA:
+                action = proto_utils.ACT_IPDATA
+            else:
+                action = proto_utils.ACT_DNS
+
         self.__update_time = time.time()
         self.dispatcher.handle_msg_from_tunnel(session_id, action, byte_data)
 
