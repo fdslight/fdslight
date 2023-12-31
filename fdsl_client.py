@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, getopt, signal, importlib, socket, sys, time, json
+import os, getopt, signal, importlib, socket, sys, time, json, gzip
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -435,6 +435,14 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__cur_traffic_size += len(message)
         if not self.have_traffic(): return
 
+        if action == proto_utils.ACT_GZIP_IPDATA or action == proto_utils.ACT_GZIP_DNS:
+            message = gzip.decompress(message)
+
+            if action == proto_utils.ACT_GZIP_IPDATA:
+                action = proto_utils.ACT_IPDATA
+            else:
+                action = proto_utils.ACT_DNS
+            ''''''
         if action == proto_utils.ACT_DNS:
             self.get_handler(self.__dns_fileno).msg_from_tunnel(message)
             return
@@ -469,6 +477,20 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__cur_traffic_size += len(message)
         if not self.have_traffic(): return
 
+        # 压缩DNS和IPDATA数据
+        if action in (proto_utils.ACT_IPDATA, proto_utils.ACT_DNS,):
+            length = len(message)
+            new_msg = gzip.compress(message)
+            comp_length = len(new_msg)
+
+            if comp_length < length:
+                message = new_msg
+                if action == proto_utils.ACT_IPDATA:
+                    action = proto_utils.ACT_GZIP_IPDATA
+                else:
+                    action = proto_utils.ACT_GZIP_DNS
+                ''''''
+            ''''''
         handler = self.get_handler(self.__tunnel_fileno)
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
@@ -1258,6 +1280,10 @@ def main():
         print(help_doc)
         return
 
+    if d == "stop":
+        __stop_service()
+        return
+
     if m not in ("local", "gateway", "proxy_all_ipv4", "proxy_all_ipv6",):
         print(help_doc)
         return
@@ -1267,8 +1293,6 @@ def main():
         if d == "debug": debug = True
         __start_service(m, debug)
         return
-
-    if d == "stop": __stop_service()
 
 
 if __name__ == '__main__': main()
