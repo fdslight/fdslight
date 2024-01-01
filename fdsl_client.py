@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, getopt, signal, importlib, socket, sys, time, json, gzip
+import os, getopt, signal, importlib, socket, sys, time, json, zlib
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -435,10 +435,10 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__cur_traffic_size += len(message)
         if not self.have_traffic(): return
 
-        if action == proto_utils.ACT_GZIP_IPDATA or action == proto_utils.ACT_GZIP_DNS:
-            message = gzip.decompress(message)
+        if action == proto_utils.ACT_ZLIB_IPDATA or action == proto_utils.ACT_ZLIB_DNS:
+            message = zlib.decompress(message)
 
-            if action == proto_utils.ACT_GZIP_IPDATA:
+            if action == proto_utils.ACT_ZLIB_IPDATA:
                 action = proto_utils.ACT_IPDATA
             else:
                 action = proto_utils.ACT_DNS
@@ -480,15 +480,15 @@ class _fdslight_client(dispatcher.dispatcher):
         # 压缩DNS和IPDATA数据
         if action in (proto_utils.ACT_IPDATA, proto_utils.ACT_DNS,):
             length = len(message)
-            new_msg = gzip.compress(message)
+            new_msg = zlib.compress(message)
             comp_length = len(new_msg)
 
             if comp_length < length:
                 message = new_msg
                 if action == proto_utils.ACT_IPDATA:
-                    action = proto_utils.ACT_GZIP_IPDATA
+                    action = proto_utils.ACT_ZLIB_IPDATA
                 else:
-                    action = proto_utils.ACT_GZIP_DNS
+                    action = proto_utils.ACT_ZLIB_DNS
                 ''''''
             ''''''
         handler = self.get_handler(self.__tunnel_fileno)
