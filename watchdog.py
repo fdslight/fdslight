@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LANd_pass的看门狗程序
+"""看门狗程序
 """
 import sys, os, time
 
