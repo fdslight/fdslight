@@ -15,7 +15,7 @@ class ip_match(object):
 
     def __check_format(self, subnet, prefix):
         prefix = int(prefix)
-        if prefix < 1: return False
+        if prefix < 0: return False
 
         if utils.is_ipv4_address(subnet) and prefix > 32: return False
         if utils.is_ipv6_address(subnet) and prefix > 128: return False
