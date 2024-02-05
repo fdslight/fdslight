@@ -7,3 +7,4 @@
 *.redditstatic.com:1
 *.redditmedia.com:1
 *.redd.it:1
+*.amazonaws.com:1
