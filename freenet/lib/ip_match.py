@@ -56,7 +56,7 @@ class ip_match(object):
         else:
             n = 32
 
-        while n > 0:
+        while n >= 0:
             subnet = utils.calc_subnet(ipaddr, n, is_ipv6=is_ipv6)
             name = "%s/%s" % (subnet, n)
             n -= 1
