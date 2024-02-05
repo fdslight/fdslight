@@ -71,7 +71,7 @@ def parse_ip_subnet_file(fpath):
     results = []
     for line in lines:
         ret = __get_ip_subnet(line)
-        if not ret: raise FilefmtErr("the wrong ip_ruleformat on: %s\r\n" % line)
+        if not ret: raise FilefmtErr("the wrong ip_rule format on: %s\r\n" % line)
         results.append(ret)
 
     return results
