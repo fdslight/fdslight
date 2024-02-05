@@ -1,0 +1,9 @@
+## 家宽VPS规则,用于解锁需要家宽IP地址的场景
+
+*.netflix.com:1
+*.nflximg.net:1
+*.openai.com:1
+*.reddit.com:1
+*.redditstatic.com:1
+*.redditmedia.com:1
+*.redd.it:1
