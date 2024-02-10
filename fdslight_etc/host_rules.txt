@@ -105,7 +105,12 @@ podcasts.captivate.fm:1
 *.soundcloud.com:1
 *.sndcdn.com:1
 *.netflix.com:1
+*.netflix.net:1
+*.nflxext.com:1
 *.nflximg.net:1
+*.nflxvideo.net:1
+*.nflxsearch.net:1
+*.nflxso.net:1
 *.youtaker.com:1
 *.youmaker.com:1
 *.vimeocdn.com:1
