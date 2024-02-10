@@ -1251,7 +1251,7 @@ def main():
     -c      set config directory,default is fdslight_etc
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:c", [])
+        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:c:", [])
     except getopt.GetoptError:
         print(help_doc)
         return
