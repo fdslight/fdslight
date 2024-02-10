@@ -44,6 +44,7 @@ ERR_FILE = "/tmp/fdslight_error.log"
 class _fdslight_client(dispatcher.dispatcher):
     # 路由超时时间
     __ROUTE_TIMEOUT = 1200
+    __conf_dir = None
 
     # 最近日志清理时间
     __last_log_clean_time = None
@@ -161,7 +162,11 @@ class _fdslight_client(dispatcher.dispatcher):
     def tunnel_conn_fail_count(self):
         return self.__tunnel_conn_fail_count
 
-    def init_func(self, mode, debug, configs):
+    def init_func(self, mode, debug, conf_dir):
+        config_path = "%s/fn_client.ini" % conf_dir
+        self.__conf_dir = conf_dir
+        configs = configfile.ini_parse_from_file(config_path)
+
         self.create_poll()
 
         signal.signal(signal.SIGINT, self.__exit)
@@ -274,7 +279,7 @@ class _fdslight_client(dispatcher.dispatcher):
             print("cannot found tcp or udp crypto module")
             sys.exit(-1)
 
-        crypto_fpath = "%s/fdslight_etc/%s" % (BASE_DIR, conn["crypto_configfile"])
+        crypto_fpath = "%s/%s" % (conf_dir, conn["crypto_configfile"])
 
         if not os.path.isfile(crypto_fpath):
             print("crypto configfile not exists")
@@ -310,7 +315,7 @@ class _fdslight_client(dispatcher.dispatcher):
             print("you must install this software")
             sys.exit(-1)
 
-        fpath = "%s/fdslight_etc/kern_version" % BASE_DIR
+        fpath = "%s/kern_version" % BASE_DIR
         if not os.path.isfile(fpath):
             print("you must install this software")
             sys.exit(-1)
@@ -555,9 +560,9 @@ class _fdslight_client(dispatcher.dispatcher):
             sys.stderr.write("proxy_all mode not support set rules")
             return
         fpaths = [
-            "%s/fdslight_etc/host_rules.txt" % BASE_DIR,
-            "%s/fdslight_etc/ip_rules.txt" % BASE_DIR,
-            "%s/fdslight_etc/pre_load_ip_rules.txt" % BASE_DIR
+            "%s/host_rules.txt" % self.__conf_dir,
+            "%s/ip_rules.txt" % self.__conf_dir,
+            "%s/pre_load_ip_rules.txt" % self.__conf_dir
         ]
 
         for fpath in fpaths:
@@ -928,7 +933,7 @@ class _fdslight_client(dispatcher.dispatcher):
         """获取CA路径
         :return:
         """
-        path = "%s/fdslight_etc/ca-bundle.crt" % BASE_DIR
+        path = "%s/cadata/ca-bundle.crt" % BASE_DIR
         return path
 
     def is_racs_route(self, subnet, prefix, is_ipv6=False):
@@ -1101,7 +1106,7 @@ class _fdslight_client(dispatcher.dispatcher):
         return ipaddr
 
     def load_racs_configs(self):
-        fpath = "%s/fdslight_etc/racs.ini" % BASE_DIR
+        fpath = "%s/racs.ini" % self.__conf_dir
         configs = configfile.ini_parse_from_file(fpath)
         conn = configs["connection"]
         network = configs["network"]
@@ -1182,7 +1187,7 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__traffic_begin_time = now
 
 
-def __start_service(mode, debug):
+def __start_service(mode, debug, conf_dir):
     if not debug and os.path.isfile(PID_FILE):
         print("the fdsl_client process exists")
         return
@@ -1198,17 +1203,13 @@ def __start_service(mode, debug):
         if pid != 0: sys.exit(0)
         proc.write_pid(PID_FILE)
 
-    config_path = "%s/fdslight_etc/fn_client.ini" % BASE_DIR
-
-    configs = configfile.ini_parse_from_file(config_path)
-
     cls = _fdslight_client()
 
     if debug:
-        cls.ioloop(mode, debug, configs)
+        cls.ioloop(mode, debug, conf_dir)
         return
     try:
-        cls.ioloop(mode, debug, configs)
+        cls.ioloop(mode, debug, conf_dir)
     except:
         logging.print_error()
 
@@ -1247,15 +1248,17 @@ def main():
     -d      debug | start | stop    debug,start or stop application
     -m      local | gateway | proxy_all_ipv4 | proxy_all_ipv6 
     -u      rules | reset_traffic    update host and ip rules or reset traffic
+    -c      set config directory,default is fdslight_etc
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:", [])
+        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:c", [])
     except getopt.GetoptError:
         print(help_doc)
         return
     d = ""
     m = ""
     u = ""
+    c = ""
 
     for k, v in opts:
         if k == "-u":
@@ -1264,6 +1267,7 @@ def main():
 
         if k == "-m": m = v
         if k == "-d": d = v
+        if k == "-c": c = v
 
     if not d and not m and not u:
         print(help_doc)
@@ -1291,10 +1295,17 @@ def main():
         print(help_doc)
         return
 
+    if not c:
+        c = "%s/fdslight_etc" % BASE_DIR
+
+    if not os.path.isdir(c):
+        print("ERROR:configure %s not is a directory" % c)
+        return
+
     if d in ("start", "debug",):
         debug = False
         if d == "debug": debug = True
-        __start_service(m, debug)
+        __start_service(m, debug, c)
         return
 
 
