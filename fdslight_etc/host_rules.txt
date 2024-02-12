@@ -166,10 +166,14 @@ podcasts.captivate.fm:1
 *.wsj.com:1
 # 德国之声
 *.dw.com:1
+# 彭博社
+*.bloomberg.com:1
+
 *.boxun.com:1
 *.peacehall.com:1
 *.ganjingworld.com:1
 *.ganjing.com:1
+
 
 # 苹果日报
 *.appledaily.com:1
