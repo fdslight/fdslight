@@ -156,7 +156,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                 # 这里不更新时间,因为连接超时需要断开连接
                 if action == proto_utils.ACT_PONG:
                     self.__is_sent_heartbeat = False
-                    if self.debug: logging.print_general("receive pong response from server", self.__server_address)
+                    if self.debug: logging.print_general("TUNNEL:receive pong response from server", self.__server_address)
                     continue
                 if action == proto_utils.ACT_PING:
                     self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PONG, proto_utils.rand_bytes())
@@ -189,7 +189,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.send_msg_to_tunnel(self.dispatcher.session_id, proto_utils.ACT_PING, proto_utils.rand_bytes())
 
         if self.debug:
-            logging.print_general("send heartbeat ping request", self.__server_address)
+            logging.print_general("TUNNEL:send heartbeat ping request", self.__server_address)
         return
 
     @property
@@ -218,7 +218,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             # 发送心跳超时未回就关闭连接
             if self.__is_sent_heartbeat:
                 if v_for_heartbeat > 5:
-                    if self.debug: logging.print_general("server not response ping request", self.__server_address)
+                    if self.debug: logging.print_general("TUNNEL:server not response ping request", self.__server_address)
                     self.delete_handler(self.fileno)
                     return
                 ''''''

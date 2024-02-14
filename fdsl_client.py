@@ -103,6 +103,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
     __os_resolv_backup = None
     __os_resolv = None
+    __os_resolv_time = None
 
     __cur_traffic_size = None
     __limit_traffic_size = None
@@ -180,6 +181,7 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__racs_fd = -1
         self.__os_resolv_backup = []
         self.__os_resolv = os_resolv.resolv()
+        self.__os_resolv_time = time.time()
 
         self.__cur_traffic_size = 0
         self.__limit_traffic_size = 0
@@ -807,6 +809,21 @@ class _fdslight_client(dispatcher.dispatcher):
     @property
     def debug(self):
         return self.__debug
+
+    def keep_os_resolv(self):
+        """有些Linux操作系统的网络管理工具可能会定时改变resolv.conf文件,因此需要检查
+        """
+        # 只允许local模式
+        if self.__mode != _MODE_LOCAL: return
+        now = time.time()
+        # 一分钟修改一次
+        if now - self.__os_resolv_time < 60: return
+        if self.debug:
+            print("NOTE:os resolv.conf is changed")
+        self.__os_resolv_time = now
+
+        _list = [("nameserver", self.__local_dns), ]
+        self.__os_resolv.write_to_file(_list)
 
     def myloop(self):
         names = self.__route_timer.get_timeout_names()

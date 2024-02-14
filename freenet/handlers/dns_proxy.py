@@ -374,7 +374,7 @@ class dnsc_proxy(dns_base):
         host = b".".join(q.name[0:-1]).decode("iso-8859-1")
         pos = host.find(".")
 
-        if pos > 0 and self.__debug: print(host)
+        if pos > 0 and self.__debug: print("DNS_QUERY:%s" % host)
 
         is_match, flags = self.__host_match.match(host)
 

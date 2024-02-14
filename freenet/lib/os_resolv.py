@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """处理操作系统的resolv.conf文件
 """
-import os
+import os, hashlib
 
 
 class resolv(object):
     __path = None
+    __file_md5 = None
 
     def __init__(self, path="/etc/resolv.conf"):
         self.__path = path
+        self.__file_md5 = b""
 
     def __str_to_list_by_space(self, s: str):
         """通过空格分割字符串
@@ -22,6 +24,23 @@ class resolv(object):
             results.append(x)
 
         return results
+
+    def __calc_md5(self):
+        path = self.__path
+        md5 = hashlib.md5()
+        with open(path, "rb") as f:
+            s = f.read()
+        f.close()
+        md5.update(s)
+
+        return md5.digest()
+
+    def file_is_changed(self):
+        """检查文件是否发生改变
+        """
+        md5 = self.__calc_md5()
+
+        return self.__file_md5 != md5
 
     def get_os_resolv(self):
         """获取操作系统nameserver服务器信息
@@ -74,3 +93,5 @@ class resolv(object):
             fd.write(line)
             fd.write("\n")
         fd.close()
+        # 保存文件MD5
+        self.__file_md5 = self.__calc_md5()
