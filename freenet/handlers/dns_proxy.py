@@ -412,9 +412,10 @@ class dnsc_proxy(dns_base):
                     is_ipv6 = False
                 drop_msg = dns_utils.build_dns_no_such_name_response(dns_id, host, is_ipv6=is_ipv6)
                 self.__handle_msg_from_response(drop_msg)
+                if self.__debug:
+                    print("DNS_QUERY_DROP:%s" % host)
                 return
             ''''''
-
         if (not is_match and self.__server_side) or (is_match and flags == 3):
             self.send_message_to_handler(self.fileno, self.__udp_client, message)
             return
