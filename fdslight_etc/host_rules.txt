@@ -280,6 +280,7 @@ security.debian.org:1
 *.freebrowser.org:1
 *.godaddy.com:1
 *.tuidang.org:1
+*.gfw.report:1
 
 ### 书籍文化
 *.pressstore.com.tw:1
