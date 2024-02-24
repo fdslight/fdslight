@@ -34,7 +34,7 @@ _MODE_PROXY_ALL_IP4 = 3
 _MODE_PROXY_ALL_IP6 = 4
 
 # 自动日志清理时间
-AUTO_LOG_CLEAN_TIME = 3600
+AUTO_LOG_CLEAN_TIME = 3600 * 24
 
 PID_FILE = "/tmp/fdslight.pid"
 LOG_FILE = "/tmp/fdslight.log"
