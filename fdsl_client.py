@@ -938,7 +938,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__mode == _MODE_LOCAL:
             self.__os_resolv.write_to_file(self.__os_resolv_backup)
 
-        self.delete_handler(self.__tunnel_fileno)
+        self.delete_handler(self.__tundev_fileno)
 
     def __set_tunnel_ip(self, ip):
         """设置隧道IP地址
