@@ -170,8 +170,6 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.create_poll()
 
-        signal.signal(signal.SIGINT, self.__exit)
-
         self.__route_timer = timer.timer()
         self.__last_log_clean_time = time.time()
         self.__routes = {}
@@ -928,7 +926,7 @@ class _fdslight_client(dispatcher.dispatcher):
             timeout = self.__ROUTE_TIMEOUT
         self.__route_timer.set_timeout(host, timeout)
 
-    def __exit(self, signum, frame):
+    def release(self):
         if self.handler_exists(self.__dns_fileno):
             self.delete_handler(self.__dns_fileno)
 
@@ -939,7 +937,8 @@ class _fdslight_client(dispatcher.dispatcher):
             os.chdir("../")
         if self.__mode == _MODE_LOCAL:
             self.__os_resolv.write_to_file(self.__os_resolv_backup)
-        sys.exit(0)
+
+        self.delete_handler(self.__tunnel_fileno)
 
     def __set_tunnel_ip(self, ip):
         """设置隧道IP地址
@@ -1228,11 +1227,17 @@ def __start_service(mode, debug, conf_dir):
     cls = _fdslight_client()
 
     if debug:
-        cls.ioloop(mode, debug, conf_dir)
+        try:
+            cls.ioloop(mode, debug, conf_dir)
+        except KeyboardInterrupt:
+            cls.release()
         return
     try:
         cls.ioloop(mode, debug, conf_dir)
+    except KeyboardInterrupt:
+        cls.release()
     except:
+        cls.release()
         logging.print_error()
 
     os.remove(PID_FILE)
@@ -1242,8 +1247,10 @@ def __start_service(mode, debug, conf_dir):
 def __stop_service():
     pid = proc.get_pid(PID_FILE)
     if pid < 0: return
-
-    os.kill(pid, signal.SIGINT)
+    try:
+        os.kill(pid, signal.SIGINT)
+    except:
+        os.remove(PID_FILE)
 
 
 def __update_rules():
