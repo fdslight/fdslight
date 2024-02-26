@@ -237,7 +237,7 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], debug=debug,
                                                     server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
 
-        if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6, _MODE_LOCAL):
+        if self.__mode == _MODE_GW:
             self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
             self.__set_rules(None, None)
 
