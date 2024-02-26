@@ -418,18 +418,24 @@ class dnsc_proxy(dns_base):
                 if self.__debug:
                     print("DNS_QUERY_DROP:%s" % host)
                 return
-            ''''''
-        if (not is_match and self.__server_side) or (is_match and flags == 3):
-            self.send_message_to_handler(self.fileno, self.__udp_client, message)
+            elif flags == 3:
+                if self.__server_side:
+                    self.send_message_to_handler(self.fileno, self.__udp_client, message)
+                else:
+                    self.sendto(message, (self.__dnsserver, 53))
+                    self.add_evt_write(self.fileno)
+                ''''''
+            else:
+                self.dispatcher.send_msg_to_tunnel(proto_utils.ACT_DNS, message)
             return
 
-        if (not is_match and not self.__server_side) or (is_match and flags == 3):
-            # self.send(message)
+        if self.__server_side:
+            self.send_message_to_handler(self.fileno, self.__udp_client, message)
+        else:
             self.sendto(message, (self.__dnsserver, 53))
             self.add_evt_write(self.fileno)
-            return
 
-        self.dispatcher.send_msg_to_tunnel(proto_utils.ACT_DNS, message)
+        return
 
     def message_from_handler(self, from_fd, message):
         self.__handle_msg_from_response(message)
