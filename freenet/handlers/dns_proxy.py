@@ -227,18 +227,21 @@ class dnsc_proxy(dns_base):
 
         self.set_socket(s)
         self.__server_side = server_side
+        self.__dnsserver = ""
 
         if server_side:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.bind((address, 53))
         else:
-            self.connect((address, 53))
+            self.bind(("0.0.0.0", 0))
+            self.__dnsserver = address
+            # self.connect((address, 53))
 
         self.__debug = debug
         self.__timer = timer.timer()
         self.__ip_match = ip_match.ip_match()
         self.__host_match = host_match.host_match()
-        self.__dnsserver = ""
+
         self.__enable_ipv6_dns_drop = enable_ipv6_dns_drop
 
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
@@ -421,7 +424,8 @@ class dnsc_proxy(dns_base):
             return
 
         if (not is_match and not self.__server_side) or (is_match and flags == 3):
-            self.send(message)
+            # self.send(message)
+            self.sendto(message, (self.__dnsserver, 53))
             self.add_evt_write(self.fileno)
             return
 
