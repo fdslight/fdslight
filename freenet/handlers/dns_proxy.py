@@ -462,6 +462,10 @@ class dnsc_proxy(dns_base):
                 byte_saddr = socket.inet_pton(socket.AF_INET, address[0])
             self.__handle_msg_for_request(byte_saddr, None, address[1], message, is_ipv6=self.__is_ipv6)
             return
+
+        if address[0] != self.__dnsserver: return
+        if address[1] != 53: return
+
         self.__handle_msg_from_response(message)
 
     def udp_writable(self):
