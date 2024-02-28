@@ -366,10 +366,9 @@ class dnsc_proxy(dns_base):
             #self.send_message_to_handler(self.fileno, self.__udp_client, message)
             if self.__server_side:
                     self.send_message_to_handler(self.fileno, self.__udp_client, message)
-                else:
-                    self.sendto(message, (self.__dnsserver, 53))
-                    self.add_evt_write(self.fileno)
-                ''''''
+            else:
+                self.sendto(message, (self.__dnsserver, 53))
+                self.add_evt_write(self.fileno)
             return
 
         """
