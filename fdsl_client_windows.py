@@ -15,30 +15,23 @@ import pywind.lib.netutils as netutils
 import freenet.lib.utils as utils
 import freenet.lib.base_proto.utils as proto_utils
 import freenet.lib.proc as proc
-import freenet.handlers.tundev as tundev
 import freenet.handlers.dns_proxy as dns_proxy
-import freenet.lib.fdsl_ctl as fdsl_ctl
 import freenet.handlers.tunnelc as tunnelc
 import freenet.lib.file_parser as file_parser
-import freenet.handlers.traffic_pass as traffic_pass
 import freenet.lib.logging as logging
-import freenet.lib.racs_cext as racs_cext
-import freenet.lib.os_resolv as os_resolv
+import freenet.lib.windows as windows
+# import freenet.lib.racs_cext as racs_cext
 import freenet.lib.os_ifdev as os_ifdev
 import freenet.handlers.racs as racs
+import freenet.handlers.local_pfwd as local_pfwd
 import dns.resolver
-
-_MODE_GW = 1
-_MODE_LOCAL = 2
-_MODE_PROXY_ALL_IP4 = 3
-_MODE_PROXY_ALL_IP6 = 4
 
 # 自动日志清理时间
 AUTO_LOG_CLEAN_TIME = 3600 * 24
 
-PID_FILE = "/tmp/fdslight.pid"
-LOG_FILE = "/tmp/fdslight.log"
-ERR_FILE = "/tmp/fdslight_error.log"
+PID_FILE = "%s/fdslight.pid" % BASE_DIR
+LOG_FILE = "%s/fdslight.log" % BASE_DIR
+ERR_FILE = "%s/fdslight_error.log" % BASE_DIR
 
 
 class _fdslight_client(dispatcher.dispatcher):
@@ -53,11 +46,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
     __route_timer = None
 
-    __DEVNAME = "fdslight"
-
     __configs = None
-
-    __mode = 0
 
     __mbuf = None
 
@@ -66,7 +55,7 @@ class _fdslight_client(dispatcher.dispatcher):
     __dns_fileno = -1
 
     __dns_listen6 = -1
-    __tundev_fileno = -1
+    __local_pfwd_fileno = -1
 
     __session_id = None
 
@@ -100,10 +89,6 @@ class _fdslight_client(dispatcher.dispatcher):
     __racs_cfg = None
     __racs_byte_network_v4 = None
     __racs_byte_network_v6 = None
-
-    __os_resolv_backup = None
-    __os_resolv = None
-    __os_resolv_time = None
 
     __cur_traffic_size = None
     __limit_traffic_size = None
@@ -163,7 +148,10 @@ class _fdslight_client(dispatcher.dispatcher):
     def tunnel_conn_fail_count(self):
         return self.__tunnel_conn_fail_count
 
-    def init_func(self, mode, debug, conf_dir):
+    def start_for_windows(self):
+        self.__local_pfwd_fileno = self.create_handler(-1, local_pfwd.local_pfwd, 2000, 1999)
+
+    def init_func(self, debug, conf_dir):
         config_path = "%s/fn_client.ini" % conf_dir
         self.__conf_dir = conf_dir
         configs = configfile.ini_parse_from_file(config_path)
@@ -177,9 +165,6 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__static_routes = {}
         self.__tunnel_conn_fail_count = 0
         self.__racs_fd = -1
-        self.__os_resolv_backup = []
-        self.__os_resolv = os_resolv.resolv()
-        self.__os_resolv_time = time.time()
 
         self.__cur_traffic_size = 0
         self.__limit_traffic_size = 0
@@ -196,83 +181,22 @@ class _fdslight_client(dispatcher.dispatcher):
         self.load_traffic_statistics()
         self.load_racs_configs()
 
-        if mode == "local":
-            self.__mode = _MODE_LOCAL
-            self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
-        elif mode == "proxy_all_ipv4":
-            self.__mode = _MODE_PROXY_ALL_IP4
-        elif mode == "proxy_all_ipv6":
-            self.__mode = _MODE_PROXY_ALL_IP6
-        else:
-            self.__mode = _MODE_GW
-            self.__load_kernel_mod()
-
         self.__mbuf = utils.mbuf()
-        self.__debug = debug
-
-        self.__tundev_fileno = self.create_handler(-1, tundev.tundevc, self.__DEVNAME)
 
         public = configs["public"]
-        gateway = configs["gateway"]
 
         self.__enable_ipv6_traffic = bool(int(public["enable_ipv6_traffic"]))
         enable_ipv6_dns_drop = bool(int(public.get("enable_ipv6_dns_drop", "0")))
 
         is_ipv6 = utils.is_ipv6_address(public["remote_dns"])
 
-        if self.__mode == _MODE_GW:
-            self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind"], debug=debug,
-                                                    server_side=True, is_ipv6=False,
-                                                    enable_ipv6_dns_drop=enable_ipv6_dns_drop)
-            if self.__enable_ipv6_traffic:
-                self.__dns_listen6 = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind6"],
-                                                         debug=debug, server_side=True, is_ipv6=True,
-                                                         enable_ipv6_dns_drop=enable_ipv6_dns_drop)
-                self.get_handler(self.__dns_listen6).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
-        elif self.__mode == _MODE_PROXY_ALL_IP4:
-            pass
-        elif self.__mode == _MODE_PROXY_ALL_IP6:
-            pass
-        else:
-            self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"],is_ipv6=is_ipv6, debug=debug,
-                                                    server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
-
-        if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
-            if self.__mode == _MODE_GW: self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"],
-                                                                                                 is_ipv6=is_ipv6)
-            self.__set_rules(None, None)
-
-        if self.__mode == _MODE_GW:
-            udp_global = bool(int(gateway["dgram_global_proxy"]))
-            if udp_global:
-                self.__dgram_fetch_fileno = self.create_handler(-1, traffic_pass.traffic_read,
-                                                                self.__configs["gateway"],
-                                                                enable_ipv6=self.__enable_ipv6_traffic)
-            ''''''
-        elif self.__mode == _MODE_PROXY_ALL_IP4:
-            # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
-            self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
-        elif self.__mode == _MODE_PROXY_ALL_IP6:
-            # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
-            self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
-        else:
-            local = configs["local"]
-            vir_dns = local["virtual_dns"]
-            vir_dns6 = local["virtual_dns6"]
-
-            self.__local_dns = vir_dns
-            self.__local_dns6 = vir_dns6
-
-            _list = [("nameserver", vir_dns), ]
-
-            self.__os_resolv.write_to_file(_list)
-
-            self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
-            if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
-
+        self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
+                                                debug=debug,
+                                                server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
         conn = configs["connection"]
 
         m = "freenet.lib.crypto.%s" % conn["crypto_module"]
+
         try:
             self.__tcp_crypto = importlib.import_module("%s.%s_tcp" % (m, conn["crypto_module"]))
             self.__udp_crypto = importlib.import_module("%s.%s_udp" % (m, conn["crypto_module"]))
@@ -292,6 +216,8 @@ class _fdslight_client(dispatcher.dispatcher):
             print("crypto configfile should be json file")
             sys.exit(-1)
 
+        self.start_for_windows()
+
         self.__crypto_configs = crypto_configs
 
         if not debug:
@@ -309,43 +235,8 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__open_tunnel()
         ''''''
 
-    def __load_kernel_mod(self):
-        ko_file = "%s/driver/fdslight_dgram.ko" % BASE_DIR
-
-        if not os.path.isfile(ko_file):
-            print("you must install this software")
-            sys.exit(-1)
-
-        fpath = "%s/kern_version" % BASE_DIR
-        if not os.path.isfile(fpath):
-            print("you must install this software")
-            sys.exit(-1)
-
-        with open(fpath, "r") as f:
-            cp_ver = f.read()
-            fp = os.popen("uname -r")
-            now_ver = fp.read()
-            fp.close()
-
-        if cp_ver != now_ver:
-            print("the kernel is changed,please reinstall this software")
-            sys.exit(-1)
-
-        path = "/dev/%s" % fdsl_ctl.FDSL_DEV_NAME
-        if os.path.exists(path): os.system("rmmod fdslight_dgram")
-
-        # 开启ip forward
-        os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
-        # 禁止接收ICMP redirect 包,防止客户端机器选择最佳路由
-        os.system("echo 0 | tee /proc/sys/net/ipv4/conf/*/send_redirects > /dev/null")
-
-        if self.__enable_ipv6_traffic:
-            os.system("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding")
-
-        os.system("insmod %s" % ko_file)
-
-    def handle_msg_from_tundev(self, message):
-        """处理来TUN设备的数据包
+    def handle_msg_from_local_pfwd(self, message):
+        """处理来自包重定向socket的数据包
         :param message:
         :return:
         """
@@ -363,13 +254,15 @@ class _fdslight_client(dispatcher.dispatcher):
 
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
-                is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
-                                                                    self.__racs_byte_network_v6[1], is_ipv6)
+                # is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
+                #                                                    self.__racs_byte_network_v6[1], is_ipv6)
+                pass
             else:
-                is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
-                                                                    self.__racs_byte_network_v4[1], is_ipv6)
+                # is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
+                #                                                    self.__racs_byte_network_v4[1], is_ipv6)
+                pass
             if is_racs_network:
-                message = self.rewrite_racs_local_ip(message, is_src=True)
+                # message = self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
@@ -397,42 +290,13 @@ class _fdslight_client(dispatcher.dispatcher):
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
 
-        if self.__mode == _MODE_LOCAL:
-            is_dns_req, saddr, daddr, sport, rs = self.__is_dns_request()
-            if is_dns_req:
-                self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
-                return
+        is_dns_req, saddr, daddr, sport, rs = self.__is_dns_request()
+        if is_dns_req:
+            self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
+            return
 
         self.__update_route_access(sts_daddr)
         self.send_msg_to_tunnel(action, message)
-
-    def handle_msg_from_dgramdev(self, message):
-        """处理来自fdslight dgram设备的数据包
-        :param message:
-        :return:
-        """
-        self.__mbuf.copy2buf(message)
-        ip_ver = self.__mbuf.ip_version()
-        is_ipv6 = False
-
-        if ip_ver == 4:
-            self.__mbuf.offset = 16
-            fa = socket.AF_INET
-            n = 4
-        else:
-            self.__mbuf.offset = 24
-            fa = socket.AF_INET6
-            n = 16
-            is_ipv6 = True
-
-        byte_daddr = self.__mbuf.get_part(n)
-        sts_daddr = socket.inet_ntop(fa, byte_daddr)
-
-        if sts_daddr not in self.__routes:
-            self.set_route(sts_daddr, timeout=190, is_ipv6=is_ipv6, is_dynamic=True)
-        else:
-            self.__update_route_access(sts_daddr, timeout=190)
-        self.send_msg_to_tunnel(proto_utils.ACT_IPDATA, message)
 
     def handle_msg_from_tunnel(self, seession_id, action, message):
         if seession_id != self.session_id: return
@@ -459,7 +323,7 @@ class _fdslight_client(dispatcher.dispatcher):
         ip_ver = self.__mbuf.ip_version()
         if ip_ver not in (4, 6,): return
 
-        self.send_msg_to_tun(message)
+        self.send_msg_to_local_pfwd(message)
 
     def send_msg_to_other_dnsservice_for_dns_response(self, message, is_ipv6=False):
         """当启用IPV4和IPv6双协议栈的时候
@@ -503,9 +367,9 @@ class _fdslight_client(dispatcher.dispatcher):
         handler = self.get_handler(self.__tunnel_fileno)
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
-    def send_msg_to_tun(self, message):
+    def send_msg_to_local_pfwd(self, message):
         message = self.rewrite_racs_local_ip(message, is_src=False)
-        self.get_handler(self.__tundev_fileno).msg_from_tunnel(message)
+        self.get_handler(self.__local_pfwd_fileno).msg_from_tunnel(message)
 
     def __is_dns_request(self):
         mbuf = self.__mbuf
@@ -557,9 +421,6 @@ class _fdslight_client(dispatcher.dispatcher):
         return self.__session_id
 
     def __set_rules(self, signum, frame):
-        if self.__mode in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
-            sys.stderr.write("proxy_all mode not support set rules")
-            return
         fpaths = [
             "%s/host_rules.txt" % self.__conf_dir,
             "%s/ip_rules.txt" % self.__conf_dir,
@@ -657,21 +518,6 @@ class _fdslight_client(dispatcher.dispatcher):
         if not self.have_traffic():
             logging.print_error("not enough traffic for tunnel")
             return
-
-        if self.__mode == _MODE_PROXY_ALL_IP6 and netutils.is_ipv6_address(host):
-            logging.print_error("conflict,remote host is ipv6 address for proxy_all_ipv6")
-            return
-
-        if self.__mode == _MODE_PROXY_ALL_IP4 and netutils.is_ipv4_address(host):
-            logging.print_error("conflict,remote host is ipv4 address for proxy_all_ipv4")
-            return
-
-        if self.__mode == _MODE_PROXY_ALL_IP4:
-            enable_ipv6 = True
-        elif self.__mode == _MODE_PROXY_ALL_IP6:
-            enable_ipv6 = False
-        else:
-            pass
 
         is_udp = False
 
@@ -782,7 +628,6 @@ class _fdslight_client(dispatcher.dispatcher):
         for anwser in rs:
             ipaddr = anwser.__str__()
             break
-        if self.__mode == _MODE_GW: self.__set_tunnel_ip(ipaddr)
 
         self.__server_ip = ipaddr
         if not ipaddr: return ipaddr
@@ -809,29 +654,9 @@ class _fdslight_client(dispatcher.dispatcher):
     def debug(self):
         return self.__debug
 
-    def __keep_os_resolv(self):
-        """有些Linux操作系统的网络管理工具可能会定时改变resolv.conf文件,因此需要检查
-        """
-        # 只允许local模式
-        if self.__mode != _MODE_LOCAL: return
-        now = time.time()
-        # 一分钟检查一次
-        if now - self.__os_resolv_time < 60: return
-
-        self.__os_resolv_time = now
-
-        if not self.__os_resolv.file_is_changed(): return
-        if self.debug:
-            print("NOTE:os resolv.conf is changed")
-
-        _list = [("nameserver", self.__local_dns), ]
-        self.__os_resolv.write_to_file(_list)
-
     def myloop(self):
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
-
-        self.__keep_os_resolv()
 
         # 自动清理日志
         t = time.time()
@@ -930,25 +755,7 @@ class _fdslight_client(dispatcher.dispatcher):
     def release(self):
         if self.handler_exists(self.__dns_fileno):
             self.delete_handler(self.__dns_fileno)
-
-        if self.__mode == _MODE_GW:
-            self.delete_handler(self.__dgram_fetch_fileno)
-            os.chdir("%s/driver" % BASE_DIR)
-            os.system("rmmod fdslight_dgram")
-            os.chdir("../")
-        if self.__mode == _MODE_LOCAL:
-            self.__os_resolv.write_to_file(self.__os_resolv_backup)
-
-        self.delete_handler(self.__tundev_fileno)
-
-    def __set_tunnel_ip(self, ip):
-        """设置隧道IP地址
-        :param ip:
-        :return:
-        """
-        if self.__mode == _MODE_GW:
-            self.get_handler(self.__dgram_fetch_fileno).set_tunnel_ip(ip)
-        return
+        self.delete_handler(self.__local_pfwd_fileno)
 
     @property
     def ca_path(self):
@@ -1010,18 +817,18 @@ class _fdslight_client(dispatcher.dispatcher):
                 self.__last_local_ip6 = byte_addr
             else:
                 self.__last_local_ip = byte_addr
-            racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
+            # racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
             return netpkt
 
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
-            racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
-                                                    is_src, is_ipv6)
+            # racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
+            #                                        is_src, is_ipv6)
             return netpkt
 
         if not self.__last_local_ip: return netpkt
-        racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
-                                                is_src, is_ipv6)
+        # racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
+        #                                        is_src, is_ipv6)
         return netpkt
 
     def __is_local_ip(self, byte_addr: bytes):
@@ -1209,32 +1016,21 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__traffic_begin_time = now
 
 
-def __start_service(mode, debug, conf_dir):
+def __start_service(debug, conf_dir):
     if not debug and os.path.isfile(PID_FILE):
         print("the fdsl_client process exists")
         return
-
-    if not debug:
-        pid = os.fork()
-        if pid != 0: sys.exit(0)
-
-        os.setsid()
-        os.umask(0)
-        pid = os.fork()
-
-        if pid != 0: sys.exit(0)
-        proc.write_pid(PID_FILE)
 
     cls = _fdslight_client()
 
     if debug:
         try:
-            cls.ioloop(mode, debug, conf_dir)
+            cls.ioloop(debug, conf_dir)
         except KeyboardInterrupt:
             cls.release()
         return
     try:
-        cls.ioloop(mode, debug, conf_dir)
+        cls.ioloop(debug, conf_dir)
     except KeyboardInterrupt:
         cls.release()
     except:
@@ -1264,29 +1060,18 @@ def __update_rules():
     os.kill(pid, signal.SIGUSR1)
 
 
-def __reset_traffic():
-    pid = proc.get_pid(PID_FILE)
-    if pid < 0:
-        print("fdslight process not exists")
-        return
-
-    os.kill(pid, signal.SIGUSR2)
-
-
 def main():
     help_doc = """
     -d      debug | start | stop    debug,start or stop application
-    -m      local | gateway | proxy_all_ipv4 | proxy_all_ipv6 
-    -u      rules | reset_traffic    update host and ip rules or reset traffic
+    -u      rules
     -c      set config directory,default is fdslight_etc
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:c:", [])
+        opts, args = getopt.getopt(sys.argv[1:], "u:d:c:", [])
     except getopt.GetoptError:
         print(help_doc)
         return
     d = ""
-    m = ""
     u = ""
     c = ""
 
@@ -1294,23 +1079,18 @@ def main():
         if k == "-u":
             u = v
             break
-
-        if k == "-m": m = v
         if k == "-d": d = v
         if k == "-c": c = v
 
-    if not d and not m and not u:
+    if not d and not u:
         print(help_doc)
         return
 
-    if u and u not in ("rules", "reset_traffic",):
+    if u and u not in ("rules",):
         print(help_doc)
         return
     if u == "rules":
         __update_rules()
-        return
-    if u == "reset_traffic":
-        __reset_traffic()
         return
 
     if d not in ("debug", "start", "stop",):
@@ -1319,10 +1099,6 @@ def main():
 
     if d == "stop":
         __stop_service()
-        return
-
-    if m not in ("local", "gateway", "proxy_all_ipv4", "proxy_all_ipv6",):
-        print(help_doc)
         return
 
     if not c:
@@ -1335,7 +1111,7 @@ def main():
     if d in ("start", "debug",):
         debug = False
         if d == "debug": debug = True
-        __start_service(m, debug, c)
+        __start_service(debug, c)
         return
 
 
