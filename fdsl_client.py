@@ -22,7 +22,7 @@ import freenet.handlers.tunnelc as tunnelc
 import freenet.lib.file_parser as file_parser
 import freenet.handlers.traffic_pass as traffic_pass
 import freenet.lib.logging as logging
-import freenet.lib.racs_cext as racs_cext
+import freenet.lib.fn_utils as fn_utils
 import freenet.lib.os_resolv as os_resolv
 import freenet.lib.os_ifdev as os_ifdev
 import freenet.handlers.racs as racs
@@ -363,10 +363,10 @@ class _fdslight_client(dispatcher.dispatcher):
 
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
-                is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
+                is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
                                                                     self.__racs_byte_network_v6[1], is_ipv6)
             else:
-                is_racs_network = racs_cext.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
+                is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
                                                                     self.__racs_byte_network_v4[1], is_ipv6)
             if is_racs_network:
                 message = self.rewrite_racs_local_ip(message, is_src=True)
@@ -1010,17 +1010,17 @@ class _fdslight_client(dispatcher.dispatcher):
                 self.__last_local_ip6 = byte_addr
             else:
                 self.__last_local_ip = byte_addr
-            racs_cext.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
+            fn_utils.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
             return netpkt
 
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
-            racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
+            fn_utils.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
                                                     is_src, is_ipv6)
             return netpkt
 
         if not self.__last_local_ip: return netpkt
-        racs_cext.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
+        fn_utils.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
                                                 is_src, is_ipv6)
         return netpkt
 

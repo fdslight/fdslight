@@ -18,20 +18,13 @@ def write_kern_ver_to_file(fpath):
 
 def __build_fn_utils(cflags):
     sys_build.do_compile(
-        ["freenet/lib/fn_utils.c"], "freenet/lib/fn_utils.so", cflags, debug=False, is_shared=True
+        ["freenet/lib/fn_utils.c","pywind/clib/netutils.c"], "freenet/lib/fn_utils.so", cflags, debug=False, is_shared=True
     )
 
 
 def __build_fdsl_ctl(cflags):
     sys_build.do_compile(
         ["driver/fdsl_dgram/py_fdsl_ctl.c"], "freenet/lib/fdsl_ctl.so", cflags, debug=False, is_shared=True
-    )
-
-
-def __build_fdsl_racs(cflags):
-    sys_build.do_compile(
-        ["pywind/clib/netutils.c", "freenet/lib/racs_cext.c"], "freenet/lib/racs_cext.so", cflags, debug=False,
-        is_shared=True
     )
 
 
@@ -52,7 +45,6 @@ def build_client(cflags, gw_mode=False):
     cflags += " -O3 -Wall"
     __build_fn_utils(cflags)
     __build_fdsl_ctl(cflags)
-    __build_fdsl_racs(cflags)
 
     if gw_mode:
         os.chdir("driver/fdsl_dgram")
