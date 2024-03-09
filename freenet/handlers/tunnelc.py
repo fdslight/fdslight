@@ -388,7 +388,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         origin = ("Origin", "https://%s" % self.__https_sni_host)
 
         if self.__isset_http_thin_protocol:
-            session_id = base64.b16encode(session_id=self.dispatcher.session_id).decode("iso-8859-1")
+            session_id = base64.b16encode(self.dispatcher.session_id).decode("iso-8859-1")
             kv_pairs.append(
                 ("X-User-Session-Id", session_id)
             )
