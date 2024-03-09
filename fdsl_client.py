@@ -26,6 +26,7 @@ import freenet.lib.fn_utils as fn_utils
 import freenet.lib.os_resolv as os_resolv
 import freenet.lib.os_ifdev as os_ifdev
 import freenet.handlers.racs as racs
+import freenet.lib.base_proto.tunnel_over_http as tunnel_over_http
 import dns.resolver
 
 _MODE_GW = 1
@@ -234,7 +235,8 @@ class _fdslight_client(dispatcher.dispatcher):
         elif self.__mode == _MODE_PROXY_ALL_IP6:
             pass
         else:
-            self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"],is_ipv6=is_ipv6, debug=debug,
+            self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
+                                                    debug=debug,
                                                     server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
 
         if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
@@ -364,10 +366,10 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
                 is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
-                                                                    self.__racs_byte_network_v6[1], is_ipv6)
+                                                                   self.__racs_byte_network_v6[1], is_ipv6)
             else:
                 is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
-                                                                    self.__racs_byte_network_v4[1], is_ipv6)
+                                                                   self.__racs_byte_network_v4[1], is_ipv6)
             if is_racs_network:
                 message = self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
@@ -641,6 +643,8 @@ class _fdslight_client(dispatcher.dispatcher):
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
 
+        use_https = False
+
         server_host_from_nat = bool(int(conn.get("server_host_from_nat", 0)))
 
         only_permit_send_udp_data_when_first_recv_peer = bool(
@@ -687,6 +691,10 @@ class _fdslight_client(dispatcher.dispatcher):
         else:
             handler = tunnelc.tcp_tunnel
             crypto = self.__tcp_crypto
+            if over_https:
+                crypto = tunnel_over_http
+                use_https = True
+            ''''''
 
         if conn_timeout < 120:
             raise ValueError("the conn timeout must be more than 120s")
@@ -706,7 +714,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
         if tunnel_type.lower() == "udp": kwargs["redundancy"] = redundancy
 
-        self.__tunnel_fileno = self.create_handler(-1, handler, crypto, self.__crypto_configs, **kwargs)
+        if use_https:
+            self.__tunnel_fileno = self.create_handler(-1, handler, crypto, None, **kwargs)
+            self.get_handler(self.__tunnel_fileno).set_use_http_thin_protocol(True)
+        else:
+            self.__tunnel_fileno = self.create_handler(-1, handler, crypto, self.__crypto_configs, **kwargs)
 
         rs = self.get_handler(self.__tunnel_fileno).create_tunnel((host, port,))
         if not rs:
@@ -1016,12 +1028,12 @@ class _fdslight_client(dispatcher.dispatcher):
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
             fn_utils.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
-                                                    is_src, is_ipv6)
+                                                   is_src, is_ipv6)
             return netpkt
 
         if not self.__last_local_ip: return netpkt
         fn_utils.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
-                                                is_src, is_ipv6)
+                                               is_src, is_ipv6)
         return netpkt
 
     def __is_local_ip(self, byte_addr: bytes):

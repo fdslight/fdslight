@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """客户端隧道实现
 """
+import base64
 import socket, time, ssl, random, hashlib
 
 import pywind.evtframework.handlers.tcp_handler as tcp_handler
@@ -36,6 +37,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
     __enable_https_sni = None
     __https_sni_host = None
     __strict_https = None
+    __isset_http_thin_protocol = None
 
     __tmp_buf = None
 
@@ -46,6 +48,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__over_https = False
         self.__https_sni_host = None
         self.__enable_https_sni = None
+        self.__isset_http_thin_protocol = False
 
         self.__http_handshake_ok = False
         self.__tmp_buf = []
@@ -130,6 +133,11 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__server_address = server_address
         return True
 
+    def set_use_http_thin_protocol(self, enable:bool):
+        """使用专门为http协议优化的精简协议
+        """
+        self.__isset_http_thin_protocol = enable
+
     def tcp_readable(self):
         if self.__over_https and not self.__http_handshake_ok:
             self.recv_handshake()
@@ -150,7 +158,11 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                 pkt_info = self.__decrypt.get_pkt()
                 if not pkt_info: break
 
-                session_id, action, message = pkt_info
+                if self.__isset_http_thin_protocol:
+                    session_id = self.dispatcher.session_id
+                    action, message = pkt_info
+                else:
+                    session_id, action, message = pkt_info
 
                 if action not in proto_utils.ACTS: continue
                 # 这里不更新时间,因为连接超时需要断开连接
@@ -333,7 +345,10 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             self.delete_handler(self.fileno)
 
     def send_msg_to_tunnel(self, session_id, action, message):
-        sent_pkt = self.__encrypt.build_packet(session_id, action, message)
+        if self.__isset_http_thin_protocol:
+            sent_pkt = self.__encrypt.build_packet(action, message)
+        else:
+            sent_pkt = self.__encrypt.build_packet(session_id, action, message)
 
         if self.__over_https and not self.__http_handshake_ok:
             self.__tmp_buf.append(sent_pkt)
@@ -371,6 +386,12 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
         host = ("Host", self.__https_sni_host,)
         origin = ("Origin", "https://%s" % self.__https_sni_host)
+
+        if self.__isset_http_thin_protocol:
+            session_id = base64.b16encode(session_id=self.dispatcher.session_id).decode("iso-8859-1")
+            kv_pairs.append(
+                ("X-User-Session-Id", session_id)
+            )
 
         kv_pairs.append(host)
         kv_pairs.append(origin)
