@@ -160,36 +160,6 @@ class tun_base(handler.handler):
         self.__current_write_queue_n += 1
         self.___ip_packets_for_write.append(n_ip_message)
 
-
-class tundevs(tun_base):
-    """服务端的tun数据处理
-    """
-
-    def dev_init(self, dev_name):
-        self.register(self.fileno)
-        self.add_evt_read(self.fileno)
-
-    def handle_ip_packet_from_read(self, ip_packet):
-        self.dispatcher.send_msg_to_tunnel_from_tun(ip_packet)
-
-    def handle_ip_packet_for_write(self, ip_packet):
-        return ip_packet
-
-    def dev_delete(self):
-        self.unregister(self.fileno)
-        os.close(self.fileno)
-
-    def dev_error(self):
-        self.delete_handler(self.fileno)
-
-    def dev_timeout(self):
-        pass
-
-    def handle_msg_from_tunnel(self, message):
-        self.add_to_sent_queue(message)
-        self.add_evt_write(self.fileno)
-
-
 class tundevc(tun_base):
     def dev_init(self, dev_name):
         self.register(self.fileno)
