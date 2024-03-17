@@ -160,6 +160,7 @@ class tun_base(handler.handler):
         self.__current_write_queue_n += 1
         self.___ip_packets_for_write.append(n_ip_message)
 
+
 class tundevc(tun_base):
     def dev_init(self, dev_name):
         self.register(self.fileno)
