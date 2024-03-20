@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """协议帧格式
 session_id: 16bytes 会话ID,为MD5值
+timestamp:8 bytes 时间截
 tot_len:2 bytes 未分包前的数据长度
 payload_length:2 bytes 实际负载数据长度
 tot_seg: 4 bit 全部的分包个数
@@ -9,11 +10,11 @@ reverse:4 bit 保留
 action:4bit 动作
 """
 import freenet.lib.base_proto.utils as proto_utils
-import struct
+import struct, time
 
-MIN_FIXED_HEADER_SIZE = 22
+MIN_FIXED_HEADER_SIZE = 30
 
-_FMT = "!16sHHbb"
+_FMT = "!16sQHHbb"
 
 
 class builder(object):
@@ -66,7 +67,7 @@ class builder(object):
     def __build_proto_header(self, session_id, pkt_len, real_size, tot_seg, seq, action):
         if action not in proto_utils.ACTS: raise ValueError("not support action type")
         return struct.pack(
-            _FMT, session_id,
+            _FMT, session_id, int(time.time()),
             pkt_len, real_size, (tot_seg << 4) | seq, action
         )
 
@@ -162,6 +163,7 @@ class parser(object):
     __tot_seg = 0
 
     __pkt_len = 0
+    __packet_timeout = 0
 
     def __init__(self, fixed_header_size):
         if fixed_header_size < MIN_FIXED_HEADER_SIZE: raise proto_utils.ProtoError(
@@ -170,6 +172,8 @@ class parser(object):
         self.__fixed_header_size = fixed_header_size
         self.__wait_fill_seq = []
         self.__data_area = {}
+        # 超过时间的数据包丢弃
+        self.__packet_timeout = 5
 
     def __parse_raib(self, data_block, csum_block):
         """从数据块和校检块中获取另一数据块内容"""
@@ -185,10 +189,10 @@ class parser(object):
         res = struct.unpack(_FMT, header)
 
         return (
-            res[0], res[1],
-            res[2],
-            (res[3] & 0xf0) >> 4,
-            res[3] & 0x0f, res[4],
+            res[0], res[1], res[2],
+            res[3],
+            (res[4] & 0xf0) >> 4,
+            res[4] & 0x0f, res[5],
         )
 
     def __get_pkt(self, pkt):
@@ -201,11 +205,14 @@ class parser(object):
         real_header = self.unwrap_header(packet[0:self.__fixed_header_size])
         if not real_header: return
 
-        session_id, pkt_len, payload_len, tot_seg, seq, action = self.__parse_header(real_header)
+        session_id, timestamp, pkt_len, payload_len, tot_seg, seq, action = self.__parse_header(real_header)
         real_body = self.unwrap_body(payload_len, packet[self.__fixed_header_size:])
 
         self.__pkt_len = pkt_len
 
+        # 丢弃超时数据包,这里需要考虑小于0的情况,即时间回退
+        now = time.time()
+        if now - timestamp < 0 or now - timestamp > self.__packet_timeout: return None
         # 0为非法序号
         if seq == 0: return None
         if seq > 3: return None
