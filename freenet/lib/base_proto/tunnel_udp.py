@@ -67,7 +67,7 @@ class builder(object):
     def __build_proto_header(self, session_id, pkt_len, real_size, tot_seg, seq, action):
         if action not in proto_utils.ACTS: raise ValueError("not support action type")
         return struct.pack(
-            _FMT, session_id, int(time.time()),
+            _FMT, session_id, self.get_time(),
             pkt_len, real_size, (tot_seg << 4) | seq, action
         )
 
@@ -155,6 +155,11 @@ class builder(object):
         """重写这个方法,用于协议配置"""
         pass
 
+    def get_time(self):
+        """使用gmtime时间
+        """
+        return int(time.mktime(time.gmtime()))
+
 
 class parser(object):
     __fixed_header_size = 0
@@ -210,9 +215,7 @@ class parser(object):
 
         self.__pkt_len = pkt_len
 
-        # 丢弃超时数据包,这里需要考虑小于0的情况,即时间回退
-        now = time.time()
-        if now - timestamp < 0 or now - timestamp > self.__packet_timeout: return None
+        if self.is_expired(timestamp): return None
         # 0为非法序号
         if seq == 0: return None
         if seq > 3: return None
@@ -287,6 +290,13 @@ class parser(object):
     def config(self, config):
         """重写这个方法,用于协议配置"""
         pass
+
+    def is_expired(self, secs: int):
+        gm_secs = int(time.mktime(time.gmtime()))
+
+        v = abs(gm_secs - secs)
+        if v > self.__packet_timeout: return True
+        return False
 
 
 """
