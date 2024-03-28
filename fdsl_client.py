@@ -197,6 +197,8 @@ class _fdslight_client(dispatcher.dispatcher):
         self.load_traffic_statistics()
         self.load_racs_configs()
 
+        self.__cfg_os_net_forward()
+
         if mode == "local":
             self.__mode = _MODE_LOCAL
             self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
@@ -311,6 +313,18 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__open_tunnel()
         ''''''
 
+    def __cfg_os_net_forward(self):
+        """配置操作系统转发环境
+        """
+        # 开启ip forward
+        os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
+        # 禁止接收ICMP redirect 包,防止客户端机器选择最佳路由
+        os.system("echo 0 | tee /proc/sys/net/ipv4/conf/*/send_redirects > /dev/null")
+
+        if self.__enable_ipv6_traffic:
+            os.system("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding")
+        return
+
     def __load_kernel_mod(self):
         ko_file = "%s/driver/fdslight_dgram.ko" % BASE_DIR
 
@@ -335,14 +349,6 @@ class _fdslight_client(dispatcher.dispatcher):
 
         path = "/dev/%s" % fdsl_ctl.FDSL_DEV_NAME
         if os.path.exists(path): os.system("rmmod fdslight_dgram")
-
-        # 开启ip forward
-        os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
-        # 禁止接收ICMP redirect 包,防止客户端机器选择最佳路由
-        os.system("echo 0 | tee /proc/sys/net/ipv4/conf/*/send_redirects > /dev/null")
-
-        if self.__enable_ipv6_traffic:
-            os.system("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding")
 
         os.system("insmod %s" % ko_file)
 
