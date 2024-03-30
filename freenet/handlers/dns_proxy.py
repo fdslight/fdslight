@@ -66,89 +66,6 @@ class dns_base(udp_handler.udp_handler):
         print(self.__dns_id_map)
 
 
-class dnsd_proxy(dns_base):
-    """服务端的DNS代理"""
-    __LOOP_TIMEOUT = 5
-    # DNS查询超时
-    __QUERY_TIMEOUT = 3
-    __timer = None
-
-    def init_func(self, creator_fd, dns_server, is_ipv6=False):
-        self.__timer = timer.timer()
-
-        if is_ipv6:
-            fa = socket.AF_INET6
-        else:
-            fa = socket.AF_INET
-
-        s = socket.socket(fa, socket.SOCK_DGRAM)
-
-        self.set_socket(s)
-        try:
-            self.connect((dns_server, 53))
-        except:
-            self.close()
-            return -1
-        self.register(self.fileno)
-        self.add_evt_read(self.fileno)
-
-        self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
-        return self.fileno
-
-    def udp_readable(self, message, address):
-        size = len(message)
-        if size < 16: return
-
-        dns_id = (message[0] << 8) | message[1]
-        if not self.dns_id_map_exists(dns_id): return
-        n_dns_id, session_id = self.get_dns_id_map(dns_id)
-        L = list(message)
-
-        L[0:2] = (
-            (n_dns_id & 0xff00) >> 8,
-            n_dns_id & 0xff
-        )
-        self.del_dns_id_map(dns_id)
-        self.__timer.drop(dns_id)
-
-        self.dispatcher.response_dns(session_id, bytes(L))
-
-    def udp_writable(self):
-        self.remove_evt_write(self.fileno)
-
-    def udp_timeout(self):
-        dns_ids = self.__timer.get_timeout_names()
-        for dns_id in dns_ids:
-            if not self.__timer.exists(dns_id): continue
-            self.del_dns_id_map(dns_id)
-        self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
-        return
-
-    def udp_error(self):
-        self.delete_handler(self.fileno)
-
-    def udp_delete(self):
-        self.unregister(self.fileno)
-        self.close()
-
-    def request_dns(self, session_id, message):
-        if len(message) < 16: return
-        dns_id = (message[0] << 8) | message[1]
-        n_dns_id = self.get_dns_id()
-        if n_dns_id < 0: return
-
-        self.set_dns_id_map(n_dns_id, (dns_id, session_id))
-        L = list(message)
-        L[0:2] = (
-            (n_dns_id & 0xff00) >> 8,
-            n_dns_id & 0x00ff
-        )
-        self.__timer.set_timeout(n_dns_id, self.__QUERY_TIMEOUT)
-
-        self.send(bytes(L))
-        self.add_evt_write(self.fileno)
-
-
 class udp_client_for_dns(udp_handler.udp_handler):
     __creator = None
     __address = None
@@ -250,6 +167,10 @@ class dnsc_proxy(dns_base):
 
         return self.fileno
 
+    @property
+    def hosts(self):
+        return self.dispatcher.hosts
+
     def set_host_rules(self, rules):
         self.__host_match.clear()
         for rule in rules:
@@ -294,6 +215,12 @@ class dnsc_proxy(dns_base):
             self.dispatcher.set_route(ip, is_ipv6=is_ipv6, is_dynamic=True)
             return
 
+    def resp_dns_packet_for_no_server_side(self, saddr, daddr, sport, dport, message, mtu, is_ipv6=False):
+        packets = ippkts.build_udp_packets(saddr, daddr, sport, dport, message, mtu=mtu, is_ipv6=is_ipv6)
+        for packet in packets:
+            self.dispatcher.send_msg_to_tun(packet)
+        return
+
     def __handle_msg_from_response(self, message):
         try:
             msg = dns.message.from_wire(message)
@@ -326,10 +253,7 @@ class dnsc_proxy(dns_base):
                 mtu = 1280
             else:
                 mtu = 1500
-            packets = ippkts.build_udp_packets(saddr, daddr, 53, dport, message, mtu=mtu, is_ipv6=self.__is_ipv6)
-            for packet in packets:
-                self.dispatcher.send_msg_to_tun(packet)
-
+            self.resp_dns_packet_for_no_server_side(saddr, daddr, 53, dport, message, mtu, is_ipv6=self.__is_ipv6)
             self.del_dns_id_map(dns_id)
             self.__timer.drop(dns_id)
             return
@@ -355,6 +279,8 @@ class dnsc_proxy(dns_base):
         size = len(message)
         if size < 16: return
 
+        dns_id = (message[0] << 8) | message[1]
+
         try:
             msg = dns.message.from_wire(message)
         except:
@@ -363,9 +289,9 @@ class dnsc_proxy(dns_base):
         questions = msg.question
 
         if len(questions) != 1 or msg.opcode() != 0:
-            #self.send_message_to_handler(self.fileno, self.__udp_client, message)
+            # self.send_message_to_handler(self.fileno, self.__udp_client, message)
             if self.__server_side:
-                    self.send_message_to_handler(self.fileno, self.__udp_client, message)
+                self.send_message_to_handler(self.fileno, self.__udp_client, message)
             else:
                 self.sendto(message, (self.__dnsserver, 53))
                 self.add_evt_write(self.fileno)
@@ -384,9 +310,52 @@ class dnsc_proxy(dns_base):
 
         if pos > 0 and self.__debug: print("DNS_QUERY:%s" % host)
 
+        if self.__is_ipv6:
+            mtu = 1280
+        else:
+            mtu = 1500
+
+        a_hosts = self.hosts["A"]
+        aaaa_hosts = self.hosts['AAAA']
+        ip6_addr = aaaa_hosts.get(host, "")
+        ip4_addr = a_hosts.get(host, "")
+        hosts_resp_flags = False
+
+        if dns_utils.is_aaaa_request(message):
+            if ip6_addr:
+                hosts_resp_flags = True
+                resp_msg = dns_utils.build_dns_addr_response(dns_id, host, ip6_addr, is_ipv6=True)
+            else:
+                # 如果该地址在IPv4 hosts存在,IPv6不存在,那么AAAA请求返回IPv6不存在
+                if ip4_addr:
+                    hosts_resp_flags = True
+                    resp_msg = dns_utils.build_dns_no_such_name_response(dns_id, host, is_ipv6=True)
+                ''''''
+            ''''''
+        if dns_utils.is_a_request(message):
+            ip4_addr = a_hosts.get(host, "")
+            if ip4_addr:
+                hosts_resp_flags = True
+                resp_msg = dns_utils.build_dns_addr_response(dns_id, ip4_addr, is_ipv6=False)
+            else:
+                # 如果该地址在IPv6 hosts存在,IPv6不存在,那么A请求返回IPv4不存在
+                if ip6_addr:
+                    hosts_resp_flags = True
+                    resp_msg = dns_utils.build_dns_no_such_name_response(dns_id, host, is_ipv6=False)
+                ''''''
+            ''''''
+
+        if hosts_resp_flags:
+            if self.__server_side:
+                self.sendto(resp_msg, (saddr, sport,))
+                self.add_evt_write(self.fileno)
+            else:
+                self.resp_dns_packet_for_no_server_side(daddr, saddr, 53, sport, mtu, is_ipv6=self.__is_ipv6)
+
+            return
+
         is_match, flags = self.__host_match.match(host)
 
-        dns_id = (message[0] << 8) | message[1]
         n_dns_id = self.get_dns_id()
         if n_dns_id < 0: return
 

@@ -122,6 +122,8 @@ class _fdslight_client(dispatcher.dispatcher):
     # 最近发包的本地IPv6地址
     __last_local_ip6 = None
 
+    __hosts = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -193,8 +195,10 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.__local_ip_update = time.time()
         self.__local_ip_info = {}
+        self.__hosts = {}
 
         self.load_traffic_statistics()
+        self.load_hosts()
         self.load_racs_configs()
 
         self.__cfg_os_net_forward()
@@ -564,7 +568,60 @@ class _fdslight_client(dispatcher.dispatcher):
 
         return self.__session_id
 
+    @property
+    def hosts(self):
+        return self.__hosts
+
+    def load_hosts(self):
+        self.__hosts = {
+            "A": {},
+            "AAAA": {}
+        }
+
+        path = "%s/hosts.json" % self.__conf_dir
+        if not os.path.isfile(path):
+            logging.print_error("not found %s hosts file" % path)
+            return
+        with open(path, "r") as f:
+            s = f.read()
+        f.close()
+
+        try:
+            hosts = json.loads(s)
+        except json.JSONDecoder:
+            logging.print_error("wrong file hosts file format %s" % path)
+            return
+
+        if not isinstance(hosts, dict):
+            logging.print_error("wrong file hosts file format %s,it must be dict" % path)
+            return
+
+        if "A" not in hosts: hosts["A"] = {}
+        if "AAAA" not in hosts: hosts["AAAA"] = {}
+
+        if not isinstance(hosts['A'], dict):
+            logging.print_error("wrong file hosts file A record format %s,it must be dict" % path)
+            return
+
+        if not isinstance(hosts['AAAA'], dict):
+            logging.print_error("wrong file hosts file AAAA record format %s,it must be dict" % path)
+            return
+
+        for host, addr in hosts['A'].items():
+            if not netutils.is_ipv4_address(addr):
+                logging.print_error("wrong file hosts file A record IP address format %s %s" % (path, addr))
+                return
+            continue
+
+        for host, addr in hosts['AAAA'].items():
+            if not netutils.is_ipv6_address(addr):
+                logging.print_error("wrong file hosts file AAAArecord IP address format %s %s" % (path, addr))
+                return
+            continue
+        self.__hosts = hosts
+
     def __set_rules(self, signum, frame):
+        self.load_hosts()
         if self.__mode in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
             sys.stderr.write("proxy_all mode not support set rules")
             return

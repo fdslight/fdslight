@@ -1,0 +1,8 @@
+{
+  "A": {
+    "www.example.com": "192.168.1.1"
+  },
+  "AAAA": {
+    "www.example.com": "8888::1"
+  }
+}
