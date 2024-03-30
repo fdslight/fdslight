@@ -350,7 +350,7 @@ class dnsc_proxy(dns_base):
                 self.sendto(resp_msg, (saddr, sport,))
                 self.add_evt_write(self.fileno)
             else:
-                self.resp_dns_packet_for_no_server_side(daddr, saddr, 53, sport, mtu, is_ipv6=self.__is_ipv6)
+                self.resp_dns_packet_for_no_server_side(daddr, saddr, 53, sport, resp_msg, mtu, is_ipv6=self.__is_ipv6)
 
             return
 
