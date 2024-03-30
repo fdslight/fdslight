@@ -42,7 +42,7 @@ class udp_handler(handler.handler):
     def get_id(self, address):
         """根据地址生成唯一id"""
         if isinstance(address, tuple):
-            return "%s-%s" % (address[0],address[1],)
+            return "%s-%s" % (address[0], address[1],)
         return address
 
     def bind(self, address):
@@ -120,6 +120,9 @@ class udp_handler(handler.handler):
                 try:
                     sent_size = self.socket.send(byte_data)
                 except ConnectionError:
+                    self.error()
+                    return
+                except OSError:
                     self.error()
                     return
                 remain = byte_data[sent_size:]
