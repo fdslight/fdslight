@@ -336,7 +336,7 @@ class dnsc_proxy(dns_base):
             ip4_addr = a_hosts.get(host, "")
             if ip4_addr:
                 hosts_resp_flags = True
-                resp_msg = dns_utils.build_dns_addr_response(dns_id, ip4_addr, is_ipv6=False)
+                resp_msg = dns_utils.build_dns_addr_response(dns_id, host, ip4_addr, is_ipv6=False)
             else:
                 # 如果该地址在IPv6 hosts存在,IPv6不存在,那么A请求返回IPv4不存在
                 if ip6_addr:
