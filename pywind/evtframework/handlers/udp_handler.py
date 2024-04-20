@@ -135,32 +135,26 @@ class udp_handler(handler.handler):
         del_names = []
         for name in self.__sent:
             data_queue = self.__sent[name]
-            break_loop = False
+            try:
+                byte_data, flags, address = data_queue.pop(0)
+            except IndexError:
+                break
+            try:
+                sent_size = self.socket.sendto(byte_data, flags, address)
+            except BlockingIOError:
+                break
+            except FileNotFoundError:
+                self.error()
+                return
+            slice_data = byte_data[sent_size:]
 
-            while 1:
-                try:
-                    byte_data, flags, address = data_queue.pop(0)
-                except IndexError:
-                    break
-                try:
-                    sent_size = self.socket.sendto(byte_data, flags, address)
-                except FileNotFoundError:
-                    self.error()
-                    continue
-                slice_data = byte_data[sent_size:]
+            if slice_data:
+                data_queue.insert(0, (slice_data, flags, address,))
+                break
 
-                if slice_data:
-                    break_loop = True
-                    self.__sent[name].insert(0, (slice_data, flags, address,))
-                    break
-                continue
-
-            if break_loop: break
-
-            if not self.__sent[name]:
+            if not data_queue:
                 del_names.append(name)
             ''''''
-
         for name in del_names:
             del self.__sent[name]
 
