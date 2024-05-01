@@ -236,10 +236,10 @@ class _fdslight_client(dispatcher.dispatcher):
                                                          debug=debug, server_side=True, is_ipv6=True,
                                                          enable_ipv6_dns_drop=enable_ipv6_dns_drop)
                 self.get_handler(self.__dns_listen6).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
-        elif self.__mode == _MODE_PROXY_ALL_IP4:
-            pass
-        elif self.__mode == _MODE_PROXY_ALL_IP6:
-            pass
+        # elif self.__mode == _MODE_PROXY_ALL_IP4:
+        #    pass
+        # elif self.__mode == _MODE_PROXY_ALL_IP6:
+        #    pass
         else:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                     debug=debug,
@@ -257,12 +257,12 @@ class _fdslight_client(dispatcher.dispatcher):
                                                                 self.__configs["gateway"],
                                                                 enable_ipv6=self.__enable_ipv6_traffic)
             ''''''
-        elif self.__mode == _MODE_PROXY_ALL_IP4:
-            # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
-            self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
-        elif self.__mode == _MODE_PROXY_ALL_IP6:
-            # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
-            self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
+        # elif self.__mode == _MODE_PROXY_ALL_IP4:
+        # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
+        #     self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
+        # elif self.__mode == _MODE_PROXY_ALL_IP6:
+        # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
+        #    self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
         else:
             local = configs["local"]
             vir_dns = local["virtual_dns"]
@@ -277,6 +277,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
             self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
             if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
+
+        if self.__mode == _MODE_PROXY_ALL_IP4:
+            self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
+        if self.__mode == _MODE_PROXY_ALL_IP6:
+            self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
 
         conn = configs["connection"]
 
