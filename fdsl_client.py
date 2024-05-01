@@ -203,9 +203,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.__cfg_os_net_forward()
 
+        if mode in ("local", "proxy_all_ipv4", "proxy_all_ipv6",):
+            self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
+
         if mode == "local":
             self.__mode = _MODE_LOCAL
-            self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
         elif mode == "proxy_all_ipv4":
             self.__mode = _MODE_PROXY_ALL_IP4
         elif mode == "proxy_all_ipv6":
@@ -1016,7 +1018,7 @@ class _fdslight_client(dispatcher.dispatcher):
             os.chdir("%s/driver" % BASE_DIR)
             os.system("rmmod fdslight_dgram")
             os.chdir("../")
-        if self.__mode == _MODE_LOCAL:
+        if self.__mode in (_MODE_LOCAL, _MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
             self.__os_resolv.write_to_file(self.__os_resolv_backup)
 
         self.delete_handler(self.__tundev_fileno)
