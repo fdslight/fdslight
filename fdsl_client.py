@@ -416,7 +416,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
 
-        if self.__mode == _MODE_LOCAL:
+        if self.__mode in (_MODE_LOCAL, _MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
             is_dns_req, saddr, daddr, sport, rs = self.__is_dns_request()
             if is_dns_req:
                 self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
