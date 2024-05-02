@@ -37,10 +37,6 @@ _MODE_PROXY_ALL_IP6 = 4
 # 自动日志清理时间
 AUTO_LOG_CLEAN_TIME = 3600 * 24
 
-PID_FILE = "/tmp/fdslight.pid"
-LOG_FILE = "/tmp/fdslight.log"
-ERR_FILE = "/tmp/fdslight_error.log"
-
 
 class _fdslight_client(dispatcher.dispatcher):
     # 路由超时时间
@@ -49,6 +45,8 @@ class _fdslight_client(dispatcher.dispatcher):
 
     # 最近日志清理时间
     __last_log_clean_time = None
+    __log_file = None
+    __err_file = None
 
     __routes = None
 
@@ -170,6 +168,8 @@ class _fdslight_client(dispatcher.dispatcher):
         config_path = "%s/fn_client.ini" % conf_dir
         self.__conf_dir = conf_dir
         configs = configfile.ini_parse_from_file(config_path)
+        self.__log_file = "%s/fdslight.log" % conf_dir
+        self.__err_file = "%s/error.log" % conf_dir
 
         self.create_poll()
 
@@ -203,11 +203,9 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.__cfg_os_net_forward()
 
-        if mode in ("local", "proxy_all_ipv4", "proxy_all_ipv6",):
-            self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
-
         if mode == "local":
             self.__mode = _MODE_LOCAL
+            self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
         elif mode == "proxy_all_ipv4":
             self.__mode = _MODE_PROXY_ALL_IP4
         elif mode == "proxy_all_ipv6":
@@ -238,10 +236,10 @@ class _fdslight_client(dispatcher.dispatcher):
                                                          debug=debug, server_side=True, is_ipv6=True,
                                                          enable_ipv6_dns_drop=enable_ipv6_dns_drop)
                 self.get_handler(self.__dns_listen6).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
-        # elif self.__mode == _MODE_PROXY_ALL_IP4:
-        #    pass
-        # elif self.__mode == _MODE_PROXY_ALL_IP6:
-        #    pass
+        elif self.__mode == _MODE_PROXY_ALL_IP4:
+            pass
+        elif self.__mode == _MODE_PROXY_ALL_IP6:
+            pass
         else:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                     debug=debug,
@@ -259,12 +257,12 @@ class _fdslight_client(dispatcher.dispatcher):
                                                                 self.__configs["gateway"],
                                                                 enable_ipv6=self.__enable_ipv6_traffic)
             ''''''
-        # elif self.__mode == _MODE_PROXY_ALL_IP4:
-        # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
-        #     self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
-        # elif self.__mode == _MODE_PROXY_ALL_IP6:
-        # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
-        #    self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
+        elif self.__mode == _MODE_PROXY_ALL_IP4:
+            # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
+            self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
+        elif self.__mode == _MODE_PROXY_ALL_IP6:
+            # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
+            self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
         else:
             local = configs["local"]
             vir_dns = local["virtual_dns"]
@@ -279,11 +277,6 @@ class _fdslight_client(dispatcher.dispatcher):
 
             self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
             if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
-
-        if self.__mode == _MODE_PROXY_ALL_IP4:
-            self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
-        if self.__mode == _MODE_PROXY_ALL_IP6:
-            self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
 
         conn = configs["connection"]
 
@@ -310,8 +303,8 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__crypto_configs = crypto_configs
 
         if not debug:
-            sys.stdout = open(LOG_FILE, "a+")
-            sys.stderr = open(ERR_FILE, "a+")
+            sys.stdout = open(self.__log_file, "a+")
+            sys.stderr = open(self.__err_file, "a+")
         ''''''
 
         signal.signal(signal.SIGUSR1, self.__set_rules)
@@ -416,7 +409,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
 
-        if self.__mode in (_MODE_LOCAL, _MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
+        if self.__mode == _MODE_LOCAL:
             is_dns_req, saddr, daddr, sport, rs = self.__is_dns_request()
             if is_dns_req:
                 self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
@@ -884,8 +877,8 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__debug: return
         sys.stdout.close()
         # 删除日志
-        os.remove(LOG_FILE)
-        sys.stdout = open(LOG_FILE, "a+")
+        os.remove(self.__log_file)
+        sys.stdout = open(self.__err_file, "a+")
 
     @property
     def debug(self):
@@ -1292,7 +1285,9 @@ class _fdslight_client(dispatcher.dispatcher):
 
 
 def __start_service(mode, debug, conf_dir):
-    if not debug and os.path.isfile(PID_FILE):
+    pid_file = "%s/fdslight.pid" % conf_dir
+
+    if not debug and os.path.isfile(pid_file):
         print("the fdsl_client process exists")
         return
 
@@ -1305,7 +1300,7 @@ def __start_service(mode, debug, conf_dir):
         pid = os.fork()
 
         if pid != 0: sys.exit(0)
-        proc.write_pid(PID_FILE)
+        proc.write_pid(pid_file)
 
     cls = _fdslight_client()
 
@@ -1323,21 +1318,24 @@ def __start_service(mode, debug, conf_dir):
         cls.release()
         logging.print_error()
 
-    os.remove(PID_FILE)
+    os.remove(pid_file)
     sys.exit(0)
 
 
-def __stop_service():
-    pid = proc.get_pid(PID_FILE)
+def __stop_service(c):
+    pid_file = "%s/fdslight.pid"
+
+    pid = proc.get_pid(pid_file)
     if pid < 0: return
     try:
         os.kill(pid, signal.SIGINT)
     except:
-        os.remove(PID_FILE)
+        os.remove(pid_file)
 
 
-def __update_rules():
-    pid = proc.get_pid(PID_FILE)
+def __update_rules(c):
+    pid_file = "%s/fdslight.pid"
+    pid = proc.get_pid(pid_file)
 
     if pid < 0:
         print("fdslight process not exists")
@@ -1346,8 +1344,9 @@ def __update_rules():
     os.kill(pid, signal.SIGUSR1)
 
 
-def __reset_traffic():
-    pid = proc.get_pid(PID_FILE)
+def __reset_traffic(c):
+    pid_file = "%s/fdslight.pid"
+    pid = proc.get_pid(pid_file)
     if pid < 0:
         print("fdslight process not exists")
         return
@@ -1388,11 +1387,20 @@ def main():
     if u and u not in ("rules", "reset_traffic",):
         print(help_doc)
         return
-    if u == "rules":
-        __update_rules()
+
+    if not c:
+        c = "%s/fdslight_etc" % BASE_DIR
+
+    if not os.path.isdir(c):
+        print("ERROR:configure %s not is a directory" % c)
         return
+
+    if u == "rules":
+        __update_rules(c)
+        return
+
     if u == "reset_traffic":
-        __reset_traffic()
+        __reset_traffic(c)
         return
 
     if d not in ("debug", "start", "stop",):
@@ -1400,18 +1408,11 @@ def main():
         return
 
     if d == "stop":
-        __stop_service()
+        __stop_service(c)
         return
 
     if m not in ("local", "gateway", "proxy_all_ipv4", "proxy_all_ipv6",):
         print(help_doc)
-        return
-
-    if not c:
-        c = "%s/fdslight_etc" % BASE_DIR
-
-    if not os.path.isdir(c):
-        print("ERROR:configure %s not is a directory" % c)
         return
 
     if d in ("start", "debug",):
