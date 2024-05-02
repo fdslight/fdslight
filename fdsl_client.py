@@ -1325,7 +1325,7 @@ def __start_service(mode, debug, conf_dir):
 
 
 def __stop_service(c):
-    pid_file = "%s/fdslight.pid"
+    pid_file = "%s/fdslight.pid" % c
 
     pid = proc.get_pid(pid_file)
     if pid < 0: return
@@ -1336,7 +1336,7 @@ def __stop_service(c):
 
 
 def __update_rules(c):
-    pid_file = "%s/fdslight.pid"
+    pid_file = "%s/fdslight.pid" % c
     pid = proc.get_pid(pid_file)
 
     if pid < 0:
@@ -1347,7 +1347,7 @@ def __update_rules(c):
 
 
 def __reset_traffic(c):
-    pid_file = "%s/fdslight.pid"
+    pid_file = "%s/fdslight.pid" % c
     pid = proc.get_pid(pid_file)
     if pid < 0:
         print("fdslight process not exists")
