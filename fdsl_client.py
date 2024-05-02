@@ -264,6 +264,7 @@ class _fdslight_client(dispatcher.dispatcher):
             self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
         elif self.__mode == _MODE_PROXY_ALL_IP6:
             # 如果VPS主机仅仅支持IPv4,那么转发所有流量到有IPv6的主机
+            print("ZZ")
             self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
         else:
             local = configs["local"]
