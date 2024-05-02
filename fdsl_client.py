@@ -52,7 +52,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
     __route_timer = None
 
-    __DEVNAME = "fdslight"
+    __devname = "fdslight"
 
     __configs = None
 
@@ -203,6 +203,8 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.__cfg_os_net_forward()
 
+        self.__devname = self.__configs['public'].get('tun_devname', 'fdslight')
+
         if mode == "local":
             self.__mode = _MODE_LOCAL
             self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
@@ -217,7 +219,7 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__mbuf = utils.mbuf()
         self.__debug = debug
 
-        self.__tundev_fileno = self.create_handler(-1, tundev.tundevc, self.__DEVNAME)
+        self.__tundev_fileno = self.create_handler(-1, tundev.tundevc, self.__devname)
 
         public = configs["public"]
         gateway = configs["gateway"]
@@ -954,7 +956,7 @@ class _fdslight_client(dispatcher.dispatcher):
             if name not in self.__static_routes: continue
             return
 
-        cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__DEVNAME)
+        cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
 
         if not is_dynamic:
@@ -981,7 +983,7 @@ class _fdslight_client(dispatcher.dispatcher):
             s = ""
             if not prefix: prefix = 32
 
-        cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__DEVNAME)
+        cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
 
         if is_dynamic:
