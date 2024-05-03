@@ -901,6 +901,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.debug:
             print("NOTE:os resolv.conf is changed")
 
+        # options是为了修复操作系统DNS偶发性5秒延迟BUG
         _list = [("options", "single-request-reopen"), ("nameserver", self.__local_dns), ]
         self.__os_resolv.write_to_file(_list)
 
