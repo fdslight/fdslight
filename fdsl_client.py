@@ -273,7 +273,7 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__local_dns = vir_dns
             self.__local_dns6 = vir_dns6
 
-            _list = [("nameserver", vir_dns), ]
+            _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
 
             self.__os_resolv.write_to_file(_list)
 
