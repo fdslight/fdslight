@@ -901,7 +901,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.debug:
             print("NOTE:os resolv.conf is changed")
 
-        _list = [("nameserver", self.__local_dns), ]
+        _list = [("options", "single-request-reopen"), ("nameserver", self.__local_dns), ]
         self.__os_resolv.write_to_file(_list)
 
     def myloop(self):
