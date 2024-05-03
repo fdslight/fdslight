@@ -25,7 +25,6 @@ import freenet.lib.logging as logging
 import freenet.lib.fn_utils as fn_utils
 import freenet.lib.os_resolv as os_resolv
 import freenet.lib.os_ifdev as os_ifdev
-import freenet.lib.dns_utils as dns_utils
 import freenet.handlers.racs as racs
 import freenet.lib.base_proto.tunnel_over_http as tunnel_over_http
 import dns.resolver
@@ -412,28 +411,12 @@ class _fdslight_client(dispatcher.dispatcher):
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
 
-        if self.__mode in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6, _MODE_LOCAL,):
+        if self.__mode == _MODE_LOCAL:
             is_dns_req, saddr, daddr, sport, rs = self.__is_dns_request()
-            # LOCAL模式发送全部DNS请求
             if is_dns_req:
-                if self.__mode == _MODE_LOCAL:
-                    self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
-                # 全局IPv4模式只发送A请求到远端服务器
-                elif self.__mode == _MODE_PROXY_ALL_IP4:
-                    if dns_utils.is_a_request(rs):
-                        self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6,
-                                                                            force_tunnel=True)
-                    ''''''
-                # 全局IPv6模式只发送AAAA请求到远端服务器
-                else:
-                    if dns_utils.is_aaaa_request(rs):
-                        self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6,
-                                                                            force_tunnel=True)
-                    ''''''
-                ''''''
-            else:
-                pass
-            ''''''
+                self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
+                return
+
         self.__update_route_access(sts_daddr)
         self.send_msg_to_tunnel(action, message)
 

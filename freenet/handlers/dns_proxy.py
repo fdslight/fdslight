@@ -275,7 +275,7 @@ class dnsc_proxy(dns_base):
         self.sendto(message, (sts_daddr, dport))
         self.add_evt_write(self.fileno)
 
-    def __handle_msg_for_request(self, saddr, daddr, sport, message, is_ipv6=False, force_tunnel=False):
+    def __handle_msg_for_request(self, saddr, daddr, sport, message, is_ipv6=False):
         size = len(message)
         if size < 16: return
 
@@ -403,10 +403,6 @@ class dnsc_proxy(dns_base):
                 self.dispatcher.send_msg_to_tunnel(proto_utils.ACT_DNS, message)
             return
 
-        if force_tunnel:
-            self.dispatcher.send_msg_to_tunnel(proto_utils.ACT_DNS, message)
-            return
-
         if self.__server_side:
             self.send_message_to_handler(self.fileno, self.__udp_client, message)
         else:
@@ -421,16 +417,8 @@ class dnsc_proxy(dns_base):
     def msg_from_tunnel(self, message):
         self.__handle_msg_from_response(message)
 
-    def dnsmsg_from_tun(self, saddr, daddr, sport, message, is_ipv6=False, force_tunnel=False):
-        """
-        :param saddr:
-        :param daddr:
-        :param sport:
-        :param message:
-        :param is_ipv6:是否是IPv6报文
-        :param force_tunnel:是否强制使用隧道,注意优先级比本地低
-        """
-        self.__handle_msg_for_request(saddr, daddr, sport, message, is_ipv6=is_ipv6, force_tunnel=force_tunnel)
+    def dnsmsg_from_tun(self, saddr, daddr, sport, message, is_ipv6=False):
+        self.__handle_msg_for_request(saddr, daddr, sport, message, is_ipv6=is_ipv6)
 
     def udp_timeout(self):
         names = self.__timer.get_timeout_names()
