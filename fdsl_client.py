@@ -418,19 +418,22 @@ class _fdslight_client(dispatcher.dispatcher):
             if is_dns_req:
                 if self.__mode == _MODE_LOCAL:
                     self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
-                # 全局IPv4模式只发送A请求
+                # 全局IPv4模式只发送A请求到远端服务器
                 elif self.__mode == _MODE_PROXY_ALL_IP4:
                     if dns_utils.is_a_request(rs):
-                        self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
+                        self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6,
+                                                                            force_tunnel=True)
                     ''''''
-                # 全局IPv6模式只发送AAAA请求
+                # 全局IPv6模式只发送AAAA请求到远端服务器
                 else:
                     if dns_utils.is_aaaa_request(rs):
-                        self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
+                        self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6,
+                                                                            force_tunnel=True)
                     ''''''
                 ''''''
             else:
                 pass
+            ''''''
         self.__update_route_access(sts_daddr)
         self.send_msg_to_tunnel(action, message)
 
