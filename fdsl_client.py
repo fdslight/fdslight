@@ -1328,7 +1328,9 @@ def __stop_service(c):
     pid_file = "%s/fdslight.pid" % c
 
     pid = proc.get_pid(pid_file)
-    if pid < 0: return
+    if pid < 0:
+        print("not found process for conf %s" % c)
+        return
     try:
         os.kill(pid, signal.SIGINT)
     except:
@@ -1340,7 +1342,7 @@ def __update_rules(c):
     pid = proc.get_pid(pid_file)
 
     if pid < 0:
-        print("fdslight process not exists")
+        print("not found process for conf %s" % c)
         return
 
     os.kill(pid, signal.SIGUSR1)
@@ -1350,7 +1352,7 @@ def __reset_traffic(c):
     pid_file = "%s/fdslight.pid" % c
     pid = proc.get_pid(pid_file)
     if pid < 0:
-        print("fdslight process not exists")
+        print("not found process for conf %s" % c)
         return
 
     os.kill(pid, signal.SIGUSR2)
