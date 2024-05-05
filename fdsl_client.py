@@ -880,7 +880,7 @@ class _fdslight_client(dispatcher.dispatcher):
         sys.stdout.close()
         # 删除日志
         os.remove(self.__log_file)
-        sys.stdout = open(self.__err_file, "a+")
+        sys.stdout = open(self.__log_file, "a+")
 
     @property
     def debug(self):
