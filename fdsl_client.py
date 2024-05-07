@@ -1377,10 +1377,7 @@ def main():
     c = ""
 
     for k, v in opts:
-        if k == "-u":
-            u = v
-            break
-
+        if k == "-u": u = v
         if k == "-m": m = v
         if k == "-d": d = v
         if k == "-c": c = v
