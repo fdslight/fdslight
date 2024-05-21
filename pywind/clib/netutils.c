@@ -89,9 +89,11 @@ int subnet_calc_with_msk(unsigned char *address,unsigned char *msk,int is_ipv6,u
     unsigned int *im4=(unsigned int *)msk;
     unsigned int *ir4=(unsigned int *)res;
 
+#if (!defined __x86_64__) && (!defined __aarch64__)
     unsigned long long *lla8=(unsigned long long *)address;
     unsigned long long *llm8=(unsigned long long *)msk;
     unsigned long long *llr8=(unsigned long long *)res;
+#endif
 
     if(is_ipv6){
 #ifdef __x86_64__
@@ -99,12 +101,12 @@ int subnet_calc_with_msk(unsigned char *address,unsigned char *msk,int is_ipv6,u
 #elif defined(__aarch64__)
         return subnet_calc_with_msk_for_ipv6(address,msk,res);
 #else
-      *llr8 = *lla8 & *llm8;
-      llr8++;lla8++;llm8++;
-      *llr8 = *lla8 & *llm8;
+        *llr8 = *lla8 & *llm8;
+        llr8++;lla8++;llm8++;
+        *llr8 = *lla8 & *llm8;
 #endif
     }else{
-	*ir4 = *ia4 & *im4;
+	    *ir4 = *ia4 & *im4;
     }   
     return 0;
 }
