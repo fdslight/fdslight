@@ -42,6 +42,7 @@ EXTRA_DROPS = [
 
     "simba.taobao.com",
     "ganjing",
+    "xiaohongshu.com",
 
     # 去除规则,避免和额外加入的重复
     "gz-data.com",
