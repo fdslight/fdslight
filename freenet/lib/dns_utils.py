@@ -98,12 +98,7 @@ def __build_dns_err_response(xid: int, host: str, code: int, is_ipv6=False):
 def build_dns_no_such_name_response(xid: int, host: str, is_ipv6=False):
     """构建DNS no such name 响应
     """
-    return __build_dns_err_response(xid, host, 0x8183, is_ipv6=is_ipv6)
-
-
-def build_dns_no_such_af_response(xid: int, host: str, is_ipv6=False):
-    return __build_dns_err_response(xid, host, 0x8185, is_ipv6=is_ipv6)
-
+    return __build_dns_err_response(xid, host, 0x8180, is_ipv6=is_ipv6)
 
 def build_dns_addr_response(xid, host, addr, is_ipv6=False):
     """构建DNS A或者AAAA响应
