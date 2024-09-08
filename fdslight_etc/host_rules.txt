@@ -176,6 +176,7 @@ podcasts.captivate.fm:1
 *.ganjingworld.com:1
 *.ganjing.com:1
 *.ganjing.world:1
+*.ganjing.media:1
 
 
 # 苹果日报
