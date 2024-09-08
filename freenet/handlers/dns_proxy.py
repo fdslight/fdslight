@@ -375,7 +375,7 @@ class dnsc_proxy(dns_base):
         if self.__enable_ipv6_dns_drop:
             if dns_utils.is_aaaa_request(message):
                 dns_id = (message[0] << 8) | message[1]
-                drop_msg = dns_utils.build_dns_no_such_af_response(dns_id, host, is_ipv6=True)
+                drop_msg = dns_utils.build_dns_no_such_name_response(dns_id, host, is_ipv6=True)
                 self.__handle_msg_from_response(drop_msg)
                 return
             ''''''

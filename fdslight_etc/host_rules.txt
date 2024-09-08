@@ -284,6 +284,7 @@ security.debian.org:1
 *.godaddy.com:1
 *.tuidang.org:1
 *.gfw.report:1
+*.zoom.us:1
 
 ### 书籍文化
 *.pressstore.com.tw:1
@@ -325,6 +326,13 @@ login.oracle.com:1
 *.zhengjian.org:1
 *.xinsheng.net:1
 *.goodtv.tv:1
+*.logos.com:1
+*.faithlife.com:1
+*.logoscdn.com:1
+*.org.hk:1
+*.cclife.org:1
+*.cmcbiblereading.com:1
+*.edu:1
 
 # 中华民国政府
 *.gov.tw:1
