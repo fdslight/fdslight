@@ -71,7 +71,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
             ciphers = cfgs.get("ciphers", "NULL")
 
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             self.__context = context
 
             if ciphers.upper() != "NULL": context.set_ciphers(ciphers)
@@ -84,8 +84,8 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             if self.__strict_https:
                 context.verify_mode = ssl.CERT_REQUIRED
                 context.load_verify_locations(self.dispatcher.ca_path)
-                context.verify_flags = ssl.VERIFY_DEFAULT
             else:
+                context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
 
             if self.__enable_https_sni:
@@ -134,7 +134,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__server_address = server_address
         return True
 
-    def set_use_http_thin_protocol(self, enable:bool):
+    def set_use_http_thin_protocol(self, enable: bool):
         """使用专门为http协议优化的精简协议
         """
         self.__isset_http_thin_protocol = enable
@@ -328,8 +328,8 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
             if self.__strict_https:
                 cert = self.socket.getpeercert()
-                if not hasattr(ssl,"match_hostname"):
-                    ssl_backports.match_hostname(cert,self.__https_sni_host)
+                if not hasattr(ssl, "match_hostname"):
+                    ssl_backports.match_hostname(cert, self.__https_sni_host)
                 else:
                     ssl.match_hostname(cert, self.__https_sni_host)
                 if self.check_cert_is_expired():
