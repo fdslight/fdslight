@@ -91,6 +91,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
             if self.__enable_https_sni:
                 s = context.wrap_socket(s, do_handshake_on_connect=False, server_hostname=self.__https_sni_host)
             else:
+                context.check_hostname = False
                 s = context.wrap_socket(s, do_handshake_on_connect=False)
 
         self.set_socket(s)
