@@ -9,7 +9,7 @@ def is_aaaa_request(dnspkt: bytes):
     xid, flags, questions, answer_rrs, authority_rrs, add_rrs = struct.unpack(HEADER_FMT, dnspkt[0:12])
 
     # 检查QR值
-    if flags & 0x8000 != 0: return False
+    if flags & 0x0000 != 0: return False
     # 一般AAAA查询或者A查询都只有一个问题
     if questions != 1: return False
 
@@ -44,7 +44,7 @@ def is_a_request(dnspkt: bytes):
     xid, flags, questions, answer_rrs, authority_rrs, add_rrs = struct.unpack(HEADER_FMT, dnspkt[0:12])
 
     # 检查QR值
-    if flags & 0x8000 != 0: return False
+    if flags & 0x0000 != 0: return False
     # 一般AAAA查询或者A查询都只有一个问题
     if questions != 1: return False
 
