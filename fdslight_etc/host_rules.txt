@@ -337,8 +337,6 @@ login.oracle.com:1
 *.edu:1
 *.chinese-family.com:1
 
-# 中华民国政府
-*.gov.tw:1
 # tw相关
 *.tw:1
 
