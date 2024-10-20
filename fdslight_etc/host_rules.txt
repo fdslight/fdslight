@@ -340,7 +340,7 @@ login.oracle.com:1
 # 中华民国政府
 *.gov.tw:1
 # tw相关
-*.org.tw:1
+*.tw:1
 
 ### 加快访问速度
 *.mit.edu:1
