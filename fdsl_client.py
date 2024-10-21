@@ -187,7 +187,7 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__cur_traffic_size = 0
         self.__limit_traffic_size = 0
 
-        self.__traffic_statistics_path = "%s/traffic.json" % BASE_DIR
+        self.__traffic_statistics_path = "%s/traffic.json" % conf_dir
         self.__traffic_up_time = time.time()
         self.__traffic_begin_time = time.time()
         # 加载fn_client.ini的远程DNS选项
