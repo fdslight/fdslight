@@ -63,6 +63,10 @@ class _fdslight_client(dispatcher.dispatcher):
     __tunnel_fileno = -1
 
     __dns_fileno = -1
+    __dot_fileno = -1
+    __enable_dot = False
+    __dot_auth_host = None
+    __dot_host = None
 
     __dns_listen6 = -1
     __tundev_fileno = -1
@@ -229,6 +233,14 @@ class _fdslight_client(dispatcher.dispatcher):
 
         is_ipv6 = utils.is_ipv6_address(public["remote_dns"])
 
+        self.__enable_dot = bool(int(public.get("enable_dot", "0")))
+        dot_auth_host = public.get("dot_auth_host", public["remote_dns"])
+        self.__dot_auth_host = dot_auth_host
+        self.__dot_host = public['remote_dns']
+
+        if self.__enable_dot:
+            self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, public['remote_dns'], dot_auth_host,
+                                                    is_ipv6=is_ipv6, debug=debug)
         if self.__mode == _MODE_GW:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind"], debug=debug,
                                                     server_side=True, is_ipv6=False,
@@ -814,6 +826,9 @@ class _fdslight_client(dispatcher.dispatcher):
     def tell_tunnel_close(self):
         self.__tunnel_fileno = -1
 
+    def tell_dot_close(self):
+        self.__dot_fileno = -1
+
     def tell_racs_close(self):
         self.__racs_fd = -1
 
@@ -1035,6 +1050,23 @@ class _fdslight_client(dispatcher.dispatcher):
         """
         path = "%s/cadata/ca-bundle.crt" % BASE_DIR
         return path
+
+    @property
+    def dns_fd(self):
+        return self.__dns_fileno
+
+    @property
+    def dot_fd(self):
+        return self.__dot_fileno
+
+    @property
+    def enable_dot(self):
+        return self.__enable_dot
+
+    def dot_open(self):
+        is_ipv6 = netutils.is_ipv6_address(self.__dot_host)
+        self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
+                                                is_ipv6=is_ipv6, debug=self.__debug)
 
     def is_racs_route(self, subnet, prefix, is_ipv6=False):
         """检查是否是racs路由
