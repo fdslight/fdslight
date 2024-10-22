@@ -2,7 +2,7 @@
 import pywind.evtframework.handlers.udp_handler as udp_handler
 import pywind.evtframework.handlers.tcp_handler as tcp_handler
 import pywind.lib.timer as timer
-import freenet.lib.ssl_backports as ssl_backports
+
 import socket, sys, struct, ssl, time
 
 try:
@@ -18,6 +18,7 @@ import freenet.lib.host_match as host_match
 import freenet.lib.ip_match as ip_match
 import freenet.lib.logging as logging
 import freenet.lib.dns_utils as dns_utils
+import freenet.lib.ssl_backports as ssl_backports
 
 
 class dns_base(udp_handler.udp_handler):
