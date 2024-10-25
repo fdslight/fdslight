@@ -427,9 +427,13 @@ class dnsc_proxy(dns_base):
         if self.__server_side:
             self.send_message_to_handler(self.fileno, self.__udp_client, message)
         else:
-            self.sendto(message, (self.__dnsserver, 53))
-            self.add_evt_write(self.fileno)
-
+            # 如果开启DoT并且DoT连不上那么使用传统DNS查询
+            if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
+                self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
+            else:
+                self.sendto(message, (self.__dnsserver, 53))
+                self.add_evt_write(self.fileno)
+            ''''''
         return
 
     def message_from_handler(self, from_fd, message):
