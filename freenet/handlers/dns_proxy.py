@@ -3,7 +3,7 @@ import pywind.evtframework.handlers.udp_handler as udp_handler
 import pywind.evtframework.handlers.tcp_handler as tcp_handler
 import pywind.lib.timer as timer
 
-import socket, sys, struct, ssl, time
+import socket, sys, struct, ssl, time, platform
 
 try:
     import dns.message
@@ -13,7 +13,12 @@ except ImportError:
 
 import freenet.lib.utils as utils
 import freenet.lib.base_proto.utils as proto_utils
-import freenet.lib.ippkts as ippkts
+
+if platform.system().lower() != "windows":
+    import freenet.lib.ippkts as ippkts
+else:
+    import freenet.lib.win_ippkts as ippkts
+
 import freenet.lib.host_match as host_match
 import freenet.lib.ip_match as ip_match
 import freenet.lib.logging as logging
