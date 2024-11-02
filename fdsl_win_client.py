@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # fdslight client for windows
-import os, signal, importlib, socket, sys, time, json, zlib, platform
+import os, signal, importlib, socket, sys, time, json, zlib, platform, ctypes
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -153,6 +153,9 @@ class fdslight_client(dispatcher.dispatcher):
         self.load_driver()
 
         self.create_poll()
+        # 因为wintun的线程事件模型关系,这里select io阻塞时间始终为0
+        # 避免无法及时收到网卡数据包
+        self.set_default_io_wait_time(0)
 
         self.__route_timer = timer.timer()
         self.__last_log_clean_time = time.time()
@@ -253,6 +256,14 @@ class fdslight_client(dispatcher.dispatcher):
         self.__wintun = wintun_wrapper.Wintun(driver_path)
 
     def __cfg_os_net_forward(self):
+        """配置操作系统网络重定向
+        """
+        self.__wintun.create_adapater(self.__devname, "fdslight")
+        self.__wintun.start_session()
+        self.__wintun.set_ip("10.1.1.1", 24)
+        self.__wintun.set_ip("9999::1", 128, is_ipv6=True)
+
+    def send_packet_to_wintun(self, byte_data: bytes):
         pass
 
     def handle_msg_from_tundev(self, message):
@@ -260,6 +271,8 @@ class fdslight_client(dispatcher.dispatcher):
         :param message:
         :return:
         """
+        # 如果网卡数据为空那么跳过
+        if not message: return
         self.__mbuf.copy2buf(message)
         ip_ver = self.__mbuf.ip_version()
 
@@ -748,6 +761,10 @@ class fdslight_client(dispatcher.dispatcher):
         return self.__debug
 
     def myloop(self):
+        # 通过不断主动轮询读取网卡数据
+        tun_recv_data = self.__wintun.read()
+        self.handle_msg_from_tundev(tun_recv_data)
+
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
 
@@ -786,8 +803,8 @@ class fdslight_client(dispatcher.dispatcher):
             if name not in self.__static_routes: continue
             return
 
-        cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
-        os.system(cmd)
+        # cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
+        # os.system(cmd)
 
         if not is_dynamic:
             name = "%s/%s" % (host, prefix,)
@@ -834,9 +851,20 @@ class fdslight_client(dispatcher.dispatcher):
             timeout = self.__ROUTE_TIMEOUT
         self.__route_timer.set_timeout(host, timeout)
 
+    def __clear_routes(self):
+        """清除所有的路由
+        """
+        pass
+
     def release(self):
         if self.handler_exists(self.__dns_fileno):
             self.delete_handler(self.__dns_fileno)
+
+        self.__clear_routes()
+
+        self.__wintun.end_session()
+        self.__wintun.close_adapter()
+        self.__wintun.delete_driver()
 
     @property
     def ca_path(self):
@@ -1075,6 +1103,14 @@ def __start_service(conf_dir):
         cls.ioloop(conf_dir)
     except KeyboardInterrupt:
         cls.release()
+    ''''''
+
+
+def __is_admin():
+    rs = ctypes.windll.shell32.IsUserAnAdmin()
+    if not rs: return False
+
+    return True
 
 
 def main():
@@ -1091,6 +1127,11 @@ def main():
 
     if not os.path.isdir(c):
         print("ERROR:configure %s not is a directory" % c)
+        return
+
+    # 需要管理员权限运行此程序
+    if not __is_admin():
+        print("ERROR:the software need administrator privileges")
         return
 
     print("NOTE:use configure directory %s" % c)

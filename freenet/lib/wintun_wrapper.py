@@ -2,6 +2,7 @@
 
 import ctypes, os
 import ctypes.wintypes as wintypes
+import pywind.lib.netutils as netutils
 
 
 class Wintun(object):
@@ -29,6 +30,8 @@ class Wintun(object):
         return rs
 
     def close_adapter(self):
+        if not self.__adapter: return
+
         self.__wintun.WintunCloseAdapter.argtypes = [ctypes.c_void_p]
         self.__wintun.WintunCloseAdapter(self.__adapter)
 
@@ -47,6 +50,8 @@ class Wintun(object):
         self.__session = self.__wintun.WintunStartSession(self.__adapter, 0x20000)
 
     def end_session(self):
+        if not self.__session: return
+
         self.__wintun.WintunEndSession.argtypes = [ctypes.c_void_p]
         self.__wintun.WintunEndSession(self.__session)
 
@@ -94,9 +99,14 @@ class Wintun(object):
         cmds = []
         if is_ipv6:
             self.__my_ipv6 = ip
+            cmds.append(
+                "netsh interface ipv6 add address \"%s\" %s/%s" % (self.__nic_name, ip, prefix)
+            )
+
         else:
             self.__my_ipv4 = ip
-            cmds.append("netsh interface ipv4 set address \"%s\" static %s 255.255.255.0" % (self.__nic_name, ip))
+            netmask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
+            cmds.append("netsh interface ipv4 set address \"%s\" static %s %s" % (self.__nic_name, ip, netmask))
             if dnsserver:
                 cmds.append("netsh interface ipv4 set dns \"%s\" static %s" % (self.__nic_name, dnsserver))
             ''''''
