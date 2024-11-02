@@ -2,6 +2,9 @@
 # fdslight client for windows
 import os, signal, importlib, socket, sys, time, json, zlib, platform, ctypes
 
+from freenet.lib.cfg_check import is_ipv6
+from pywind.web.config_samples.appserver import configs
+
 BASE_DIR = os.path.dirname(sys.argv[0])
 
 if not BASE_DIR: BASE_DIR = "."
@@ -205,7 +208,7 @@ class fdslight_client(dispatcher.dispatcher):
 
         self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"],
                                                                  is_ipv6=is_ipv6)
-        self.__set_rules(None, None)
+        self.__set_rules()
         local = configs["local"]
         vir_dns = local["virtual_dns"]
         vir_dns6 = local["virtual_dns6"]
@@ -277,6 +280,7 @@ class fdslight_client(dispatcher.dispatcher):
         # 如果网卡数据为空那么跳过
         if not message: return
         self.__mbuf.copy2buf(message)
+
         ip_ver = self.__mbuf.ip_version()
         if ip_ver not in (4, 6,): return
 
@@ -319,7 +323,13 @@ class fdslight_client(dispatcher.dispatcher):
             byte_daddr = self.__mbuf.get_part(16)
             fa = socket.AF_INET6
 
+        if not is_ipv6:
+            if byte_daddr[0] == 0xff: return
+        else:
+            if byte_daddr[0] & 0xf0 == 0xf0: return
+
         sts_daddr = socket.inet_ntop(fa, byte_daddr)
+        print(sts_daddr)
         # 丢弃不支持的传输层包
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
@@ -329,9 +339,8 @@ class fdslight_client(dispatcher.dispatcher):
         if is_dns_req:
             self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
             return
-
-        self.__update_route_access(sts_daddr)
-        self.send_msg_to_tunnel(action, message)
+        #self.__update_route_access(sts_daddr)
+        #self.send_msg_to_tunnel(action, message)
 
     def handle_msg_from_tunnel(self, seession_id, action, message):
         if seession_id != self.session_id: return
@@ -501,7 +510,7 @@ class fdslight_client(dispatcher.dispatcher):
             continue
         self.__hosts = hosts
 
-    def __set_rules(self, signum, frame):
+    def __set_rules(self):
         self.load_hosts()
         fpaths = [
             "%s/host_rules.txt" % self.__conf_dir,
@@ -513,6 +522,7 @@ class fdslight_client(dispatcher.dispatcher):
             if not os.path.isfile(fpath):
                 sys.stderr.write("cannot found %s\r\n" % fpath)
                 return
+            ''''''
         try:
             rules = file_parser.parse_host_file(fpaths[0])
             self.get_handler(self.__dns_fileno).set_host_rules(rules)
@@ -569,7 +579,6 @@ class fdslight_client(dispatcher.dispatcher):
             # 略过racs路由
             if self.is_racs_route(subnet, prefix, is_ipv6=is_ipv6): continue
             self.__del_route(subnet, prefix=prefix, is_ipv6=is_ipv6, is_dynamic=False)
-
         # 增加需要增加的路由
         for subnet, prefix, is_ipv6 in need_adds:
             self.set_route(subnet, prefix=prefix, is_ipv6=is_ipv6, is_dynamic=False)
@@ -740,6 +749,7 @@ class fdslight_client(dispatcher.dispatcher):
         # 通过不断主动轮询读取网卡数据
         tun_recv_data = self.__wintun.read()
         self.handle_msg_from_tundev(tun_recv_data)
+        #self.__wintun.wait_read_event(10)
 
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
@@ -759,10 +769,8 @@ class fdslight_client(dispatcher.dispatcher):
         # 如果禁止了IPV6流量,那么不设置IPV6路由
         if not self.__enable_ipv6_traffic and is_ipv6: return
         if is_ipv6:
-            s = "-6"
             if prefix is None: prefix = 128
         else:
-            s = ""
             if prefix is None: prefix = 32
 
         if is_ipv6:
@@ -826,7 +834,12 @@ class fdslight_client(dispatcher.dispatcher):
     def __clear_routes(self):
         """清除所有的路由
         """
-        pass
+        for k in self.__routes:
+            network, prefix, is_ipv6 = self.__routes[k]
+            self.__wintun.delete_route(network, prefix, is_ipv6=is_ipv6)
+        for k in self.__static_routes:
+            network, prefix, is_ipv6 = self.__static_routes[k]
+            self.__wintun.delete_route(network, prefix, is_ipv6=is_ipv6)
 
     def release(self):
         if self.handler_exists(self.__dns_fileno):

@@ -2,6 +2,7 @@
 
 import ctypes, os
 import ctypes.wintypes as wintypes
+from idlelib.iomenu import errors
 
 import pywind.lib.netutils as netutils
 
@@ -13,9 +14,26 @@ class Wintun(object):
     __nic_name = None
     __my_ipv4 = None
     __my_ipv6 = None
+    __if_idx = None
 
     def __init__(self, dll_path: str):
         self.__wintun = ctypes.CDLL(dll_path)
+
+    def __set_if_idx(self):
+        # 获取接口索引
+        cmd = "netsh int ipv4 show interfaces | findstr %s" % self.__nic_name
+        fdst = os.popen(cmd)
+        s = fdst.read()
+        fdst.close()
+        s = s.replace("\r", "")
+        s = s.replace("\n", "")
+        _list = s.split(" ")
+        new_list = []
+        for x in _list:
+            if not x: continue
+            new_list.append(x)
+
+        self.__if_idx = new_list[0]
 
     def create_adapater(self, name: str, tunnel_type: str):
         self.__adapter = self.__open_adapater(name)
@@ -24,7 +42,8 @@ class Wintun(object):
             self.__wintun.WintunCreateAdapter.restype = ctypes.c_void_p
             adapter = self.__wintun.WintunCreateAdapter(name, tunnel_type, None)
             self.__adapter = adapter
-        return
+
+        self.__set_if_idx()
 
     def __open_adapater(self, name: str):
         rs = self.__wintun.WintunOpenAdapter(name)
@@ -48,7 +67,7 @@ class Wintun(object):
     def start_session(self):
         self.__wintun.WintunStartSession.argtypes = [ctypes.c_void_p, wintypes.DWORD]
         self.__wintun.WintunStartSession.restype = ctypes.c_void_p
-        self.__session = self.__wintun.WintunStartSession(self.__adapter, 0x20000)
+        self.__session = self.__wintun.WintunStartSession(self.__adapter, 0x400000)
 
     def end_session(self):
         if not self.__session: return
@@ -114,17 +133,18 @@ class Wintun(object):
         for cmd in cmds:
             os.system(cmd)
 
-    def create_route(self, network: str, prefix: int, is_ipv6=False):
+    def create_route(self, network: str, prefix: int, is_ipv6=False, metric=1):
         if is_ipv6 and self.__my_ipv6 is None:
             return
         if not is_ipv6 and self.__my_ipv4 is None:
             return
+
         if is_ipv6:
-            cmd = "netsh interface ipv6 add route %s/%s \"%s\" %s" % (
-                network, prefix, self.__nic_name, self.__my_ipv6)
+            cmd = "route -6 add %s/%s %s metric %s if %s" % (
+                network, prefix, self.__my_ipv6, metric, self.__if_idx)
         else:
             mask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
-            cmd = "route add %s mask %s %s" % (network, mask, self.__my_ipv4)
+            cmd = "route add %s mask %s %s metric %s if %s" % (network, mask, self.__my_ipv4, metric, self.__if_idx)
 
         os.system(cmd)
 
