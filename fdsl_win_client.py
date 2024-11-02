@@ -67,6 +67,7 @@ class fdslight_client(dispatcher.dispatcher):
 
     # 隧道尝试连接失败次数
     __tunnel_conn_fail_count = None
+    __tunnel_fileno = None
 
     __local_dns = None
     __local_dns6 = None
@@ -163,6 +164,7 @@ class fdslight_client(dispatcher.dispatcher):
         self.__configs = configs
         self.__static_routes = {}
         self.__tunnel_conn_fail_count = 0
+        self.__tunnel_fileno = -1
         self.__racs_fd = -1
 
         # 加载fn_client.ini的远程DNS选项
@@ -285,6 +287,7 @@ class fdslight_client(dispatcher.dispatcher):
             dst_addr = message[24:40]
             is_ipv6 = True
 
+        """
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
                 is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
@@ -297,6 +300,7 @@ class fdslight_client(dispatcher.dispatcher):
                 if self.__racs_fd > 0:
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
+        """
 
         action = proto_utils.ACT_IPDATA
         is_ipv6 = False
@@ -328,34 +332,6 @@ class fdslight_client(dispatcher.dispatcher):
 
         self.__update_route_access(sts_daddr)
         self.send_msg_to_tunnel(action, message)
-
-    def handle_msg_from_dgramdev(self, message):
-        """处理来自fdslight dgram设备的数据包
-        :param message:
-        :return:
-        """
-        self.__mbuf.copy2buf(message)
-        ip_ver = self.__mbuf.ip_version()
-        is_ipv6 = False
-
-        if ip_ver == 4:
-            self.__mbuf.offset = 16
-            fa = socket.AF_INET
-            n = 4
-        else:
-            self.__mbuf.offset = 24
-            fa = socket.AF_INET6
-            n = 16
-            is_ipv6 = True
-
-        byte_daddr = self.__mbuf.get_part(n)
-        sts_daddr = socket.inet_ntop(fa, byte_daddr)
-
-        if sts_daddr not in self.__routes:
-            self.set_route(sts_daddr, timeout=190, is_ipv6=is_ipv6, is_dynamic=True)
-        else:
-            self.__update_route_access(sts_daddr, timeout=190)
-        self.send_msg_to_tunnel(proto_utils.ACT_IPDATA, message)
 
     def handle_msg_from_tunnel(self, seession_id, action, message):
         if seession_id != self.session_id: return
