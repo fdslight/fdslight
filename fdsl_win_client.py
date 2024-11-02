@@ -376,7 +376,7 @@ class fdslight_client(dispatcher.dispatcher):
     def send_msg_to_tunnel(self, action, message):
         if not self.handler_exists(self.__tunnel_fileno):
             self.__open_tunnel()
-
+        print(message)
         if not self.handler_exists(self.__tunnel_fileno): return
 
         # 压缩DNS和IPDATA数据
