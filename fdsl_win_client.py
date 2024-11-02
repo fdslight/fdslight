@@ -21,6 +21,7 @@ import freenet.lib.logging as logging
 import freenet.handlers.racs as racs
 import freenet.lib.base_proto.tunnel_over_http as tunnel_over_http
 import freenet.lib.wintun_wrapper as wintun_wrapper
+import freenet.lib.win_ippkts as ippkts
 import dns.resolver
 
 
@@ -277,7 +278,6 @@ class fdslight_client(dispatcher.dispatcher):
         if not message: return
         self.__mbuf.copy2buf(message)
         ip_ver = self.__mbuf.ip_version()
-
         if ip_ver not in (4, 6,): return
 
         if ip_ver == 4:
@@ -320,12 +320,12 @@ class fdslight_client(dispatcher.dispatcher):
             fa = socket.AF_INET6
 
         sts_daddr = socket.inet_ntop(fa, byte_daddr)
-
         # 丢弃不支持的传输层包
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
 
         is_dns_req, saddr, daddr, sport, rs = self.__is_dns_request()
+
         if is_dns_req:
             self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
             return
@@ -376,7 +376,7 @@ class fdslight_client(dispatcher.dispatcher):
     def send_msg_to_tunnel(self, action, message):
         if not self.handler_exists(self.__tunnel_fileno):
             self.__open_tunnel()
-        print(message)
+
         if not self.handler_exists(self.__tunnel_fileno): return
 
         # 压缩DNS和IPDATA数据
@@ -398,7 +398,7 @@ class fdslight_client(dispatcher.dispatcher):
 
     def send_msg_to_tun(self, message):
         message = self.rewrite_racs_local_ip(message, is_src=False)
-        self.get_handler(self.__tundev_fileno).msg_from_tunnel(message)
+        self.send_packet_to_wintun(message)
 
     def __is_dns_request(self):
         mbuf = self.__mbuf
@@ -779,8 +779,7 @@ class fdslight_client(dispatcher.dispatcher):
             if name not in self.__static_routes: continue
             return
 
-        # cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
-        # os.system(cmd)
+        self.__wintun.create_route(host, prefix, is_ipv6=is_ipv6)
 
         if not is_dynamic:
             name = "%s/%s" % (host, prefix,)
@@ -800,14 +799,11 @@ class fdslight_client(dispatcher.dispatcher):
         if is_dynamic: is_ipv6 = self.__routes[host]
 
         if is_ipv6:
-            s = "-6"
             if not prefix: prefix = 128
         else:
-            s = ""
             if not prefix: prefix = 32
 
-        cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
-        os.system(cmd)
+        self.__wintun.delete_route(host, prefix, is_ipv6=is_ipv6)
 
         if is_dynamic:
             self.__route_timer.drop(host)
@@ -886,7 +882,6 @@ class fdslight_client(dispatcher.dispatcher):
         return s == ip_route
 
     def rewrite_racs_local_ip(self, netpkt: bytes, is_src=False):
-
         version = (netpkt[0] & 0xf0) >> 4
         network = self.racs_configs["network"]
 
@@ -913,24 +908,31 @@ class fdslight_client(dispatcher.dispatcher):
         if not need_rewrite: return netpkt
         if not is_src and byte_addr != rewrite_local_addr: return netpkt
 
+        mbuf = utils.mbuf(netpkt)
+
         if is_src:
             if not self.__is_local_ip(byte_addr): return netpkt
             if is_ipv6:
                 self.__last_local_ip6 = byte_addr
+                ippkts.modify_ip6address(rewrite_local_addr, mbuf, 0)
             else:
                 self.__last_local_ip = byte_addr
-            fn_utils.modify_ip_address_from_netpkt(netpkt, rewrite_local_addr, is_src, is_ipv6)
+                ippkts.modify_ip4address(rewrite_local_addr, mbuf, 0)
+
+            netpkt = mbuf.get_data()
             return netpkt
 
         if is_ipv6:
             if not self.__last_local_ip6: return netpkt
-            fn_utils.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip6,
-                                                   is_src, is_ipv6)
+            ippkts.modify_ip6address(self.__last_local_ip6, mbuf, 1)
+            netpkt = mbuf.get_data()
             return netpkt
 
         if not self.__last_local_ip: return netpkt
-        fn_utils.modify_ip_address_from_netpkt(netpkt, self.__last_local_ip,
-                                               is_src, is_ipv6)
+
+        netpkt = mbuf.get_data()
+        ippkts.modify_ip4address(self.__last_local_ip, mbuf, 1)
+
         return netpkt
 
     def __is_local_ip(self, byte_addr: bytes):

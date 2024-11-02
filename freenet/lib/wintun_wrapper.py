@@ -2,6 +2,7 @@
 
 import ctypes, os
 import ctypes.wintypes as wintypes
+
 import pywind.lib.netutils as netutils
 
 
@@ -119,9 +120,11 @@ class Wintun(object):
         if not is_ipv6 and self.__my_ipv4 is None:
             return
         if is_ipv6:
-            cmd = ""
+            cmd = "netsh interface ipv6 add route %s/%s \"%s\" %s" % (
+                network, prefix, self.__nic_name, self.__my_ipv6)
         else:
-            cmd = "route add %s mask %s %s" % (network, prefix, self.__my_ipv4)
+            mask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
+            cmd = "route add %s mask %s %s" % (network, mask, self.__my_ipv4)
 
         os.system(cmd)
 
@@ -131,9 +134,11 @@ class Wintun(object):
         if not is_ipv6 and self.__my_ipv4 is None:
             return
         if is_ipv6:
-            cmd = ""
+            cmd = "netsh interface ipv6 del route %s/%s \"%s\" %s" % (
+                network, prefix, self.__nic_name, self.__my_ipv6)
         else:
-            cmd = "route delete %s mask %s %s" % (network, prefix, self.__my_ipv4)
+            mask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
+            cmd = "route delete %s mask %s %s" % (network, mask, self.__my_ipv4)
         os.system(cmd)
 
 # wintun = Wintun("bin/amd64/wintun.dll")
