@@ -287,9 +287,13 @@ class fdslight_client(dispatcher.dispatcher):
         if ip_ver == 4:
             dst_addr = message[16:20]
             is_ipv6 = False
+            # 丢弃组播数据包
+            if dst_addr[0] >= 224 and dst_addr[0] <= 239: return
         else:
             dst_addr = message[24:40]
             is_ipv6 = True
+            # 丢弃组播数据包
+            if dst_addr[0] == 0xff: return
 
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
@@ -303,7 +307,7 @@ class fdslight_client(dispatcher.dispatcher):
                 if self.__racs_fd > 0:
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
-
+            ''''''
         action = proto_utils.ACT_IPDATA
         is_ipv6 = False
 
