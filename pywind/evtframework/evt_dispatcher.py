@@ -107,9 +107,9 @@ class dispatcher(object):
 
         while 1:
             wait_time = self.__timer.get_min_time()
+
             if wait_time > self.__default_io_wait_time: wait_time = self.__default_io_wait_time
-            # 时间改变可能导致wait_time小于0
-            if wait_time < 0: wait_time = 0
+            if wait_time < 1: wait_time = self.__default_io_wait_time
             if self.__loop_tasks: wait_time = 0
 
             event_set = self.__poll.poll(wait_time)
