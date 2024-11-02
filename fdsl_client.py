@@ -530,6 +530,7 @@ class _fdslight_client(dispatcher.dispatcher):
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
     def send_msg_to_tun(self, message):
+        if len(message) > 1500: return
         message = self.rewrite_racs_local_ip(message, is_src=False)
         self.get_handler(self.__tundev_fileno).msg_from_tunnel(message)
 

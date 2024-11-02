@@ -89,20 +89,19 @@ class Wintun(object):
 
     def read(self):
         self.__wintun.WintunReceivePacket.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        self.__wintun.WintunReceivePacket.restype = ctypes.c_char_p
+        self.__wintun.WintunReceivePacket.restype = ctypes.c_void_p
         capacity = wintypes.DWORD()
 
         packet_ptr = self.__wintun.WintunReceivePacket(self.__session, ctypes.byref(capacity))
 
         if packet_ptr:
-            packet = ctypes.string_at(packet_ptr, capacity.value)
-            if (packet[0] & 0xf0) >> 4==4:
-                print(packet)
-                print(packet[12],packet[13],packet[14],packet[15])
-            self.__wintun.WintunReleaseReceivePacket.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            buf = ctypes.create_string_buffer(capacity.value)
+            ctypes.memmove(buf, packet_ptr, capacity.value)
+
+            self.__wintun.WintunReleaseReceivePacket.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.__wintun.WintunReleaseReceivePacket(self.__session, packet_ptr)
 
-            return packet
+            return buf.raw
 
         return b""
 
@@ -110,11 +109,13 @@ class Wintun(object):
         size = len(byte_data)
 
         self.__wintun.WintunAllocateSendPacket.argtypes = [ctypes.c_void_p, wintypes.DWORD]
-        self.__wintun.WintunAllocateSendPacket.restype = ctypes.c_char_p
+        self.__wintun.WintunAllocateSendPacket.restype = ctypes.c_void_p
 
         buffer = self.__wintun.WintunAllocateSendPacket(self.__session, size)
 
-        self.__wintun.WintunSendPacket.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        ctypes.memmove(buffer, byte_data, size)
+
+        self.__wintun.WintunSendPacket.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self.__wintun.WintunSendPacket(self.__session, buffer)
 
     def set_ip(self, ip: str, prefix: int, dnsserver=None, is_ipv6=False):
@@ -124,15 +125,21 @@ class Wintun(object):
             cmds.append(
                 "netsh interface ipv6 add address \"%s\" %s/%s" % (self.__nic_name, ip, prefix)
             )
-
+            if dnsserver:
+                cmds.append(
+                    "netsh interface ipv6 set dns \"%s\" static %s primary validate=no" % (self.__nic_name, dnsserver)
+                )
+            ''''''
         else:
             self.__my_ipv4 = ip
             netmask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
             cmds.append("netsh interface ipv4 set address \"%s\" static %s %s" % (self.__nic_name, ip, netmask))
             if dnsserver:
-                cmds.append("netsh interface ipv4 set dns \"%s\" static %s" % (self.__nic_name, dnsserver))
+                cmds.append(
+                    "netsh interface ipv4 set dns \"%s\" static %s primary validate=no" % (self.__nic_name, dnsserver))
             ''''''
         for cmd in cmds:
+            print(cmd)
             os.system(cmd)
 
     def create_route(self, network: str, prefix: int, is_ipv6=False, metric=1):
@@ -156,11 +163,12 @@ class Wintun(object):
         if not is_ipv6 and self.__my_ipv4 is None:
             return
         if is_ipv6:
-            cmd = "netsh interface ipv6 del route %s/%s \"%s\" %s" % (
-                network, prefix, self.__nic_name, self.__my_ipv6)
+            cmd = "route delete %s/%s if %s" % (
+                network, prefix, self.__if_idx)
         else:
             mask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
-            cmd = "route delete %s mask %s %s" % (network, mask, self.__my_ipv4)
+            cmd = "route delete %s mask %s if %s" % (network, mask, self.__if_idx)
+        print(cmd)
         os.system(cmd)
 
 # wintun = Wintun("bin/amd64/wintun.dll")
