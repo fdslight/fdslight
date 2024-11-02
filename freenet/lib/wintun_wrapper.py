@@ -96,7 +96,9 @@ class Wintun(object):
 
         if packet_ptr:
             packet = ctypes.string_at(packet_ptr, capacity.value)
-
+            if (packet[0] & 0xf0) >> 4==4:
+                print(packet)
+                print(packet[12],packet[13],packet[14],packet[15])
             self.__wintun.WintunReleaseReceivePacket.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
             self.__wintun.WintunReleaseReceivePacket(self.__session, packet_ptr)
 

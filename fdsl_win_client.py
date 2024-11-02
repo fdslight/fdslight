@@ -2,6 +2,8 @@
 # fdslight client for windows
 import os, signal, importlib, socket, sys, time, json, zlib, platform, ctypes
 
+from dns.inet import inet_ntop
+
 from freenet.lib.cfg_check import is_ipv6
 from pywind.web.config_samples.appserver import configs
 
@@ -279,6 +281,7 @@ class fdslight_client(dispatcher.dispatcher):
         """
         # 如果网卡数据为空那么跳过
         if not message: return
+
         self.__mbuf.copy2buf(message)
 
         ip_ver = self.__mbuf.ip_version()
@@ -329,7 +332,6 @@ class fdslight_client(dispatcher.dispatcher):
             if byte_daddr[0] & 0xf0 == 0xf0: return
 
         sts_daddr = socket.inet_ntop(fa, byte_daddr)
-        print(sts_daddr)
         # 丢弃不支持的传输层包
         if ip_ver == 4 and nexthdr not in self.__support_ip4_protocols: return
         if ip_ver == 6 and nexthdr not in self.__support_ip6_protocols: return
@@ -339,8 +341,8 @@ class fdslight_client(dispatcher.dispatcher):
         if is_dns_req:
             self.get_handler(self.__dns_fileno).dnsmsg_from_tun(saddr, daddr, sport, rs, is_ipv6=is_ipv6)
             return
-        #self.__update_route_access(sts_daddr)
-        #self.send_msg_to_tunnel(action, message)
+        # self.__update_route_access(sts_daddr)
+        # self.send_msg_to_tunnel(action, message)
 
     def handle_msg_from_tunnel(self, seession_id, action, message):
         if seession_id != self.session_id: return
@@ -749,7 +751,7 @@ class fdslight_client(dispatcher.dispatcher):
         # 通过不断主动轮询读取网卡数据
         tun_recv_data = self.__wintun.read()
         self.handle_msg_from_tundev(tun_recv_data)
-        #self.__wintun.wait_read_event(10)
+        # self.__wintun.wait_read_event(10)
 
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
