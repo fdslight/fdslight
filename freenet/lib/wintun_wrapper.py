@@ -2,8 +2,6 @@
 
 import ctypes, os
 import ctypes.wintypes as wintypes
-from idlelib.iomenu import errors
-
 import pywind.lib.netutils as netutils
 
 
@@ -127,7 +125,7 @@ class Wintun(object):
             )
             if dnsserver:
                 cmds.append(
-                    "netsh interface ipv6 set dns \"%s\" static %s primary validate=no" % (self.__nic_name, dnsserver)
+                    "netsh interface ipv6 set dnsservers \"%s\" static %s primary validate=no" % (self.__nic_name, dnsserver)
                 )
             ''''''
         else:

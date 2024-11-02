@@ -426,7 +426,7 @@ def build_udp_packets(saddr, daddr, sport, dport, message, mtu=1500, is_udplite=
     else:
         p = 17
 
-    if is_ipv6 and mtu - 40 <= msg_len:
+    if is_ipv6 and mtu - 40 >= msg_len:
         ipv6hdr = __build_ipv6_hdr(flow_label, msg_len, p, 128, saddr, daddr)
         ip6data = b"".join([ipv6hdr, message, ])
 

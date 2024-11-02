@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # fdslight client for windows
-import os, signal, importlib, socket, sys, time, json, zlib, platform, ctypes
-from sys import prefix
-
-from dns.inet import inet_ntop
-
-from freenet.lib.cfg_check import is_ipv6
-from pywind.web.config_samples.appserver import configs
+import os, importlib, socket, sys, time, json, zlib, platform, ctypes, winreg
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -76,6 +70,12 @@ class fdslight_client(dispatcher.dispatcher):
     __tunnel_conn_fail_count = None
     __tunnel_fileno = None
 
+    __local_ip = None
+    __local_ip6 = None
+    __local_ip_prefix = None
+    __local_ip6_prefix = None
+    __byte_local_ip = None
+    __byte_local_ip6 = None
     __local_dns = None
     __local_dns6 = None
 
@@ -89,6 +89,9 @@ class fdslight_client(dispatcher.dispatcher):
     __hosts = None
 
     __wintun = None
+
+    # 最近接收数据的时间
+    __last_recv_data_time = None
 
     @property
     def https_configs(self):
@@ -133,6 +136,9 @@ class fdslight_client(dispatcher.dispatcher):
         return self.__tunnel_conn_fail_count
 
     def init_func(self, conf_dir):
+        self.__last_recv_data_time = time.time()
+        # 首先清理一次注册表,非法关闭时注册表不会清空
+        self.__clear_winreg()
         self.__debug = True
         config_path = "%s/fn_client.ini" % conf_dir
         self.__conf_dir = conf_dir
@@ -148,7 +154,6 @@ class fdslight_client(dispatcher.dispatcher):
         self.set_default_io_wait_time(0)
 
         self.__route_timer = timer.timer()
-        self.__last_log_clean_time = time.time()
         self.__routes = {}
         self.__configs = configs
         self.__static_routes = {}
@@ -191,8 +196,15 @@ class fdslight_client(dispatcher.dispatcher):
                                                                  is_ipv6=is_ipv6)
         self.__set_rules()
         local = configs["local"]
+
         vir_dns = local["virtual_dns"]
         vir_dns6 = local["virtual_dns6"]
+
+        self.__local_ip, self.__local_ip_prefix = netutils.parse_ip_with_prefix(local["local_ip"])
+        self.__local_ip6, self.__local_ip6_prefix = netutils.parse_ip_with_prefix(local["local_ip6"])
+
+        self.__byte_local_ip = socket.inet_pton(socket.AF_INET, self.__local_ip)
+        self.__byte_local_ip6 = socket.inet_pton(socket.AF_INET6, self.__local_ip6)
 
         self.__local_dns = vir_dns
         self.__local_dns6 = vir_dns6
@@ -245,12 +257,13 @@ class fdslight_client(dispatcher.dispatcher):
         """
         self.__wintun.create_adapater(self.__devname, "fdslight")
         self.__wintun.start_session()
-        self.__wintun.set_ip("10.1.1.1", 32, dnsserver=self.__local_dns)
-        self.__wintun.set_ip("9999::1", 128, is_ipv6=True)
+
+        self.__wintun.set_ip(self.__local_ip, int(self.__local_ip_prefix), dnsserver=self.__local_dns)
+        self.__wintun.set_ip(self.__local_ip6, int(self.__local_ip6_prefix), dnsserver=self.__local_dns6, is_ipv6=True)
 
         self.set_route(self.__local_dns, is_ipv6=False, is_dynamic=False)
 
-        if self.__enable_ipv6_traffic: self.set_route(self.__local_dns6,is_ipv6=True, is_dynamic=False)
+        if self.__enable_ipv6_traffic: self.set_route(self.__local_dns6, is_ipv6=True, is_dynamic=False)
 
     def send_packet_to_wintun(self, byte_data: bytes):
         # 限制接收的数据包大小
@@ -278,20 +291,18 @@ class fdslight_client(dispatcher.dispatcher):
             dst_addr = message[24:40]
             is_ipv6 = True
 
-        """
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
-                is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
-                                                                   self.__racs_byte_network_v6[1], is_ipv6)
+                is_racs_network = netutils.is_subnet(dst_addr, self.__racs_byte_network_v6[1],
+                                                     self.__racs_byte_network_v6[0], is_ipv6=is_ipv6)
             else:
-                is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
-                                                                   self.__racs_byte_network_v4[1], is_ipv6)
+                is_racs_network = netutils.is_subnet(dst_addr, self.__racs_byte_network_v4[1],
+                                                     self.__racs_byte_network_v4[0], is_ipv6=is_ipv6)
             if is_racs_network:
                 message = self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
                     self.get_handler(self.__racs_fd).send_msg(message)
                 return
-        """
 
         action = proto_utils.ACT_IPDATA
         is_ipv6 = False
@@ -330,6 +341,8 @@ class fdslight_client(dispatcher.dispatcher):
         self.send_msg_to_tunnel(action, message)
 
     def handle_msg_from_tunnel(self, seession_id, action, message):
+        self.__last_recv_data_time = time.time()
+
         if seession_id != self.session_id: return
         if action not in proto_utils.ACTS: return
 
@@ -733,10 +746,15 @@ class fdslight_client(dispatcher.dispatcher):
         return self.__debug
 
     def myloop(self):
+        now = time.time()
         # 通过不断主动轮询读取网卡数据
         tun_recv_data = self.__wintun.read()
         self.handle_msg_from_tundev(tun_recv_data)
-        # self.__wintun.wait_read_event(10)
+
+        # 如果数据大于指定时间没收到数据,那么等待一段时间,减少CPU时间占用
+        if now - self.__last_recv_data_time > 3:
+            self.__wintun.wait_read_event(100)
+        ''''''
 
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
@@ -831,6 +849,32 @@ class fdslight_client(dispatcher.dispatcher):
         for k in self.__static_routes:
             network, prefix, is_ipv6 = self.__static_routes[k]
             self.__wintun.delete_route(network, prefix, is_ipv6=is_ipv6)
+        ''''''
+
+    def __clear_winreg(self):
+        """清除注册表相关适配器信息,避免适配器在注册表一直增多
+        """
+        path = r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkList\Profiles'
+        reg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
+
+        sub_num, key_num, _ = winreg.QueryInfoKey(reg)
+        dels = []
+
+        for i in range(sub_num):
+            sub_key = winreg.EnumKey(reg, i)
+            t = path + '\\' + sub_key
+            k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, t)
+            _sub_num, _key_num, _ = winreg.QueryInfoKey(k)
+            for j in range(_key_num):
+                r = winreg.EnumValue(k, j)
+                if r[0].lower() == "description":
+                    if r[1] == "fdslight":
+                        dels.append(sub_key)
+                    ''''''
+                ''''''
+            ''''''
+        for sub_key in dels:
+            winreg.DeleteKey(reg, sub_key)
 
     def release(self):
         if self.handler_exists(self.__dns_fileno):
@@ -841,6 +885,7 @@ class fdslight_client(dispatcher.dispatcher):
         self.__wintun.end_session()
         self.__wintun.close_adapter()
         self.__wintun.delete_driver()
+        self.__clear_winreg()
 
     @property
     def ca_path(self):
@@ -924,14 +969,14 @@ class fdslight_client(dispatcher.dispatcher):
             return netpkt
 
         if is_ipv6:
-            ippkts.modify_ip6address(self.__last_local_ip6, mbuf, 1)
+            ippkts.modify_ip6address(self.__byte_local_ip6, mbuf, 1)
             netpkt = mbuf.get_data()
             return netpkt
 
-        if not self.__last_local_ip: return netpkt
+        if not self.__byte_local_ip: return netpkt
 
         netpkt = mbuf.get_data()
-        ippkts.modify_ip4address(self.__last_local_ip, mbuf, 1)
+        ippkts.modify_ip4address(self.__byte_local_ip, mbuf, 1)
 
         return netpkt
 

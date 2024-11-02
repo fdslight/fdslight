@@ -398,7 +398,7 @@ def build_udp_packets(saddr, daddr, sport, dport, message, mtu=1500, is_udplite=
             0, 8,
             0, 0,
         ]
-        csum = __calc_csum(bytes(udp_hdr))
+        csum = __calc_checksum(bytes(udp_hdr), 8)
         udp_hdr[6] = (csum & 0xff00) >> 8
         udp_hdr[7] = csum & 0xff
     else:
@@ -433,7 +433,7 @@ def build_udp_packets(saddr, daddr, sport, dport, message, mtu=1500, is_udplite=
     else:
         p = 17
 
-    if is_ipv6 and mtu - 40 <= msg_len:
+    if is_ipv6 and mtu - 40 >= msg_len:
         ipv6hdr = __build_ipv6_hdr(flow_label, msg_len, p, 128, saddr, daddr)
         ip6data = b"".join([ipv6hdr, message, ])
 
