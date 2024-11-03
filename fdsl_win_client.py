@@ -765,7 +765,7 @@ class fdslight_client(dispatcher.dispatcher):
 
         # 如果数据大于指定时间没收到数据,那么等待一段时间,减少CPU时间占用
         if now - self.__last_recv_data_time > 3:
-            self.__wintun.wait_read_event(1000)
+            self.__wintun.wait_read_event(100)
         ''''''
 
         names = self.__route_timer.get_timeout_names()
