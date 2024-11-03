@@ -150,7 +150,6 @@ def modify_ip4address(ip_packet, mbuf, flags=0):
         mbuf.offset = 12
     else:
         mbuf.offset = 16
-
     mbuf.replace(ip_packet)
 
 

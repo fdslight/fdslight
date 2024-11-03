@@ -2,8 +2,6 @@
 # fdslight client for windows
 import os, importlib, socket, sys, time, json, zlib, platform, ctypes, winreg
 
-from sockshandler import is_ip
-
 BASE_DIR = os.path.dirname(sys.argv[0])
 
 if not BASE_DIR: BASE_DIR = "."
@@ -254,7 +252,7 @@ class fdslight_client(dispatcher.dispatcher):
         else:
             driver_path = "%s/driver/wintun/amd64/wintun.dll" % BASE_DIR
 
-        self.__wintun = wintun_wrapper.Wintun(driver_path, ignore_stdout=True)
+        self.__wintun = wintun_wrapper.Wintun(driver_path, ignore_cmd_output=True)
 
     def __cfg_os_net_forward(self):
         """配置操作系统网络重定向
@@ -980,18 +978,24 @@ class fdslight_client(dispatcher.dispatcher):
             else:
                 ippkts.modify_ip4address(rewrite_local_addr, mbuf, 0)
 
+            mbuf.offset = 0
             netpkt = mbuf.get_data()
+
             return netpkt
 
         if is_ipv6:
             ippkts.modify_ip6address(self.__byte_local_ip6, mbuf, 1)
+
+            mbuf.offset = 0
             netpkt = mbuf.get_data()
+
             return netpkt
 
         if not self.__byte_local_ip: return netpkt
 
-        netpkt = mbuf.get_data()
         ippkts.modify_ip4address(self.__byte_local_ip, mbuf, 1)
+        mbuf.offset = 0
+        netpkt = mbuf.get_data()
 
         return netpkt
 
