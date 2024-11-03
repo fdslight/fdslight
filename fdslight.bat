@@ -1,4 +1,7 @@
 @echo off
+
+TITLE fdslight client for windows
+
 setlocal
 set uac=~uac_permission_tmp_%random%
 md "%SystemRoot%\system32\%uac%" 2>nul

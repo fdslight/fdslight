@@ -212,6 +212,7 @@ notepad-plus-plus.org:1
 *.github.io:1
 *.githubusercontent.com:1
 *.githubapp.com:1
+*.github.com:1
 *.bit.ly:1
 *.dyndns.org:1
 *.doubleclick.net:1
