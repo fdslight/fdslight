@@ -1,4 +1,4 @@
-#### **软件功能说明**
+#### **代理软件功能说明**
 1. TCP使用分发规则：在名单内的使用代理。
 2. 可以指定特定局域网客户机进行UDP全局代理，该功能为游戏联机准备(gateway模式,only Linux,该功能基本不维护,请使用ixcsys)
 3. 服务端使用ixc_ProxyServd软件,本软件不再包含,地址 https://github.com/fdslight/ixc_ProxyServd
