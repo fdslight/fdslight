@@ -880,7 +880,7 @@ class fdslight_client(dispatcher.dispatcher):
             for j in range(_key_num):
                 r = winreg.EnumValue(k, j)
                 if r[0].lower() == "description":
-                    if r[1] == "fdslight":
+                    if r[1] == self.__devname:
                         dels.append(sub_key)
                     ''''''
                 ''''''

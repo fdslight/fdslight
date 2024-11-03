@@ -15,8 +15,8 @@
 #### **Windows启动停止**
 1. Windows不需要安装
 2. 复制fdslight_etc目录到fdslight目录下作为你的新配置文件目录,比如my_conf
-3. 修改fdslight.bat脚本里面的配置目录名
-4. 双击fdslight.bat启动
+3. 复制fdslight-sample.bat脚本为自己的脚本名,例如fdslight-win.bat,并修改里面的配置目录
+4. 双击fdslight-win.bat启动
 
 #### **注意事项**
 1. 网络改变时可能会导致程序推出，比如网线插拔，当网络改变时可能需要重启程序
