@@ -13,9 +13,19 @@ class Wintun(object):
     __my_ipv4 = None
     __my_ipv6 = None
     __if_idx = None
+    __ignore_stdout = None
 
-    def __init__(self, dll_path: str):
+    def __init__(self, dll_path: str, ignore_stdout=False):
+        self.__ignore_stdout = ignore_stdout
         self.__wintun = ctypes.CDLL(dll_path)
+
+    def __exe_cmd(self, cmd):
+        if not self.__ignore_stdout:
+            os.system(cmd)
+            return
+
+        fdst = os.popen(cmd)
+        fdst.close()
 
     def __set_if_idx(self):
         # 获取接口索引
@@ -125,7 +135,8 @@ class Wintun(object):
             )
             if dnsserver:
                 cmds.append(
-                    "netsh interface ipv6 set dnsservers \"%s\" static %s primary validate=no" % (self.__nic_name, dnsserver)
+                    "netsh interface ipv6 set dnsservers \"%s\" static %s primary validate=no" % (
+                        self.__nic_name, dnsserver)
                 )
             ''''''
         else:
@@ -137,7 +148,6 @@ class Wintun(object):
                     "netsh interface ipv4 set dns \"%s\" static %s primary validate=no" % (self.__nic_name, dnsserver))
             ''''''
         for cmd in cmds:
-            print(cmd)
             os.system(cmd)
 
     def create_route(self, network: str, prefix: int, is_ipv6=False, metric=1):
@@ -166,7 +176,6 @@ class Wintun(object):
         else:
             mask = netutils.ip_prefix_convert(prefix, is_ipv6=False)
             cmd = "route delete %s mask %s if %s" % (network, mask, self.__if_idx)
-        print(cmd)
         os.system(cmd)
 
 # wintun = Wintun("bin/amd64/wintun.dll")

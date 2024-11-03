@@ -2,6 +2,8 @@
 # fdslight client for windows
 import os, importlib, socket, sys, time, json, zlib, platform, ctypes, winreg
 
+from sockshandler import is_ip
+
 BASE_DIR = os.path.dirname(sys.argv[0])
 
 if not BASE_DIR: BASE_DIR = "."
@@ -81,8 +83,10 @@ class fdslight_client(dispatcher.dispatcher):
 
     __racs_fd = None
     __racs_cfg = None
-    __racs_byte_network_v4 = None
-    __racs_byte_network_v6 = None
+    __racs_route_subnet = None
+    __racs_route_prefix = None
+    __racs_route6_subnet = None
+    __racs_route6_prefix = None
 
     __remote_nameservers = None
 
@@ -250,7 +254,7 @@ class fdslight_client(dispatcher.dispatcher):
         else:
             driver_path = "%s/driver/wintun/amd64/wintun.dll" % BASE_DIR
 
-        self.__wintun = wintun_wrapper.Wintun(driver_path)
+        self.__wintun = wintun_wrapper.Wintun(driver_path, ignore_stdout=True)
 
     def __cfg_os_net_forward(self):
         """配置操作系统网络重定向
@@ -295,13 +299,19 @@ class fdslight_client(dispatcher.dispatcher):
             # 丢弃组播数据包
             if dst_addr[0] == 0xff: return
 
+        is_racs_network = False
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
-                is_racs_network = netutils.is_subnet(dst_addr, self.__racs_byte_network_v6[1],
-                                                     self.__racs_byte_network_v6[0], is_ipv6=is_ipv6)
+                dst_addr_s = socket.inet_ntop(socket.AF_INET6, dst_addr)
+                is_racs_network = netutils.is_subnet(dst_addr_s, self.__racs_route6_prefix,
+                                                     self.__racs_route_subnet, is_ipv6=is_ipv6)
             else:
-                is_racs_network = netutils.is_subnet(dst_addr, self.__racs_byte_network_v4[1],
-                                                     self.__racs_byte_network_v4[0], is_ipv6=is_ipv6)
+                if not is_ipv6:
+                    dst_addr_s = socket.inet_ntop(socket.AF_INET, dst_addr)
+                    is_racs_network = netutils.is_subnet(dst_addr_s, self.__racs_route_prefix,
+                                                         self.__racs_route_subnet, is_ipv6=is_ipv6)
+                    ''''''
+                ''''''
             if is_racs_network:
                 message = self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
@@ -757,7 +767,7 @@ class fdslight_client(dispatcher.dispatcher):
 
         # 如果数据大于指定时间没收到数据,那么等待一段时间,减少CPU时间占用
         if now - self.__last_recv_data_time > 3:
-            self.__wintun.wait_read_event(100)
+            self.__wintun.wait_read_event(1000)
         ''''''
 
         names = self.__route_timer.get_timeout_names()
@@ -961,7 +971,8 @@ class fdslight_client(dispatcher.dispatcher):
         if not need_rewrite: return netpkt
         if not is_src and byte_addr != rewrite_local_addr: return netpkt
 
-        mbuf = utils.mbuf(netpkt)
+        mbuf = utils.mbuf()
+        mbuf.copy2buf(netpkt)
 
         if is_src:
             if is_ipv6:
@@ -1078,17 +1089,12 @@ class fdslight_client(dispatcher.dispatcher):
         local_rewrite_ip6 = network.get("local_rewrite_ip6", "::")
 
         host, prefix = netutils.parse_ip_with_prefix(network["ip_route"])
-
-        self.__racs_byte_network_v4 = (
-            socket.inet_pton(socket.AF_INET, host),
-            socket.inet_pton(socket.AF_INET, netutils.ip_prefix_convert(int(prefix), is_ipv6=False))
-        )
+        self.__racs_route_subnet = host
+        self.__racs_route_prefix = int(prefix)
 
         host, prefix = netutils.parse_ip_with_prefix(network["ip6_route"])
-        self.__racs_byte_network_v6 = (
-            socket.inet_pton(socket.AF_INET6, host),
-            socket.inet_pton(socket.AF_INET6, netutils.ip_prefix_convert(int(prefix), is_ipv6=True))
-        )
+        self.__racs_route6_subnet = host
+        self.__racs_route6_prefix = int(prefix)
 
         network["byte_local_rewrite_ip"] = socket.inet_pton(socket.AF_INET, local_rewrite_ip)
         network["byte_local_rewrite_ip6"] = socket.inet_pton(socket.AF_INET6, local_rewrite_ip6)

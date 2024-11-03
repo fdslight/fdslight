@@ -387,13 +387,17 @@ class _fdslight_client(dispatcher.dispatcher):
             dst_addr = message[24:40]
             is_ipv6 = True
 
+        is_racs_network = False
         if self.racs_configs["connection"]["enable"]:
             if is_ipv6 and self.racs_configs["network"]["enable_ip6"]:
                 is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v6[0],
                                                                    self.__racs_byte_network_v6[1], is_ipv6)
             else:
-                is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
-                                                                   self.__racs_byte_network_v4[1], is_ipv6)
+                if not is_ipv6:
+                    is_racs_network = fn_utils.is_same_subnet_with_msk(dst_addr, self.__racs_byte_network_v4[0],
+                                                                       self.__racs_byte_network_v4[1], is_ipv6)
+                    ''''''
+                ''''''
             if is_racs_network:
                 message = self.rewrite_racs_local_ip(message, is_src=True)
                 if self.__racs_fd > 0:
