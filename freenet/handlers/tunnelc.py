@@ -123,7 +123,9 @@ class tcp_tunnel(tcp_handler.tcp_handler):
 
     def create_tunnel(self, server_address):
         server_ip = self.dispatcher.get_server_ip(server_address[0])
-        if not server_ip: return False
+        if not server_ip:
+            logging.print_general("not_found_host", server_address)
+            return False
 
         try:
             self.connect((server_ip, server_address[1]), timeout=8)
@@ -550,7 +552,9 @@ class udp_tunnel(udp_handler.udp_handler):
 
         server_ip = self.dispatcher.get_server_ip(server_address[0])
 
-        if not server_ip: return False
+        if not server_ip:
+            logging.print_general("not_found_host", server_address)
+            return False
 
         try:
             self.connect((server_ip, server_address[1]))

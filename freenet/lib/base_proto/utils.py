@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import hashlib, json, random, os
+import freenet.lib.file_sec as file_sec
 
 # 表示IP数据
 ACT_IPDATA = 1
@@ -43,12 +44,15 @@ def calc_content_md5(content):
     return md5.digest()
 
 
-def load_crypto_configfile(fpath):
+def load_crypto_configfile(fpath, is_sec=False, sec_key=None):
     """载入加密配置文件
     :param fpath:
     :return:
     """
-    with open(fpath, "r") as f:
-        data = f.read()
-
+    if is_sec:
+        data = file_sec.decypt_file_no_gen_file(fpath, sec_key).decode()
+    else:
+        with open(fpath, "r") as f:
+            data = f.read()
+        f.close()
     return json.loads(data)

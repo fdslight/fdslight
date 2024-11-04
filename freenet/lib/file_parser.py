@@ -3,6 +3,8 @@
 文件格式:一条规则就是一行,#开头的表示注解:
 """
 
+import freenet.lib.file_sec as file_sec
+
 
 class FilefmtErr(Exception): pass
 
@@ -15,11 +17,18 @@ def __drop_comment(line):
     return line[0:pos]
 
 
-def __read_from_file(fpath):
+def __read_from_file(fpath, is_sec=False, sec_key=None):
     result = []
-    fdst = open(fpath, "rb")
 
-    for line in fdst:
+    if is_sec:
+        s = file_sec.decypt_file_no_gen_file(fpath, sec_key)
+        s = s.replace(b"\r", b"")
+        obj = s.split(b"\n")
+
+    else:
+        obj = open(fpath, "rb")
+
+    for line in obj:
         line = line.decode("iso-8859-1")
         line = __drop_comment(line)
         line = line.replace("\r", "")
@@ -28,14 +37,15 @@ def __read_from_file(fpath):
         line = line.rstrip()
         if not line: continue
         result.append(line)
-    fdst.close()
+
+    if not is_sec: obj.close()
 
     return result
 
 
-def parse_host_file(fpath):
+def parse_host_file(fpath, is_sec=False, sec_key=None):
     """解析主机文件,即域名规则文件"""
-    lines = __read_from_file(fpath)
+    lines = __read_from_file(fpath, is_sec=is_sec, sec_key=sec_key)
     results = []
     for line in lines:
         find = line.find(":")
@@ -65,9 +75,9 @@ def __get_ip_subnet(line):
     return (ipaddr, mask,)
 
 
-def parse_ip_subnet_file(fpath):
+def parse_ip_subnet_file(fpath, is_sec=False, sec_key=None):
     """解析IP地址列表文件"""
-    lines = __read_from_file(fpath)
+    lines = __read_from_file(fpath, is_sec=is_sec, sec_key=sec_key)
     results = []
     for line in lines:
         ret = __get_ip_subnet(line)

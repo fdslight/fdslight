@@ -22,6 +22,7 @@ import freenet.handlers.racs as racs
 import freenet.lib.base_proto.tunnel_over_http as tunnel_over_http
 import freenet.lib.wintun_wrapper as wintun_wrapper
 import freenet.lib.win_ippkts as ippkts
+import freenet.lib.file_sec as file_sec
 import dns.resolver
 
 
@@ -95,6 +96,8 @@ class fdslight_client(dispatcher.dispatcher):
     # 最近接收数据的时间
     __last_recv_data_time = None
 
+    __file_key = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -137,16 +140,17 @@ class fdslight_client(dispatcher.dispatcher):
     def tunnel_conn_fail_count(self):
         return self.__tunnel_conn_fail_count
 
-    def init_func(self, conf_dir):
+    def init_func(self, conf_dir, file_key: str):
+        self.__file_key = file_key
         self.__last_recv_data_time = time.time()
         # 首先清理一次注册表,非法关闭时注册表不会清空
         self.__clear_winreg()
         self.__debug = True
-        config_path = "%s/fn_client.ini" % conf_dir
+        config_path = "%s/fn_client.ini.sec" % conf_dir
         self.__conf_dir = conf_dir
-        configs = configfile.ini_parse_from_file(config_path)
-        self.__log_file = "%s/fdslight.log" % conf_dir
-        self.__err_file = "%s/error.log" % conf_dir
+
+        s=file_sec.decypt_file_no_gen_file(config_path,self.__file_key).decode()
+        configs = configfile.ini_parse_from_sts(s)
 
         self.load_driver()
 
@@ -221,14 +225,14 @@ class fdslight_client(dispatcher.dispatcher):
             print("cannot found tcp or udp crypto module")
             sys.exit(-1)
 
-        crypto_fpath = "%s/%s" % (conf_dir, conn["crypto_configfile"])
+        crypto_fpath = "%s/%s.sec" % (conf_dir, conn["crypto_configfile"])
 
         if not os.path.isfile(crypto_fpath):
             print("crypto configfile not exists")
             sys.exit(-1)
 
         try:
-            crypto_configs = proto_utils.load_crypto_configfile(crypto_fpath)
+            crypto_configs = proto_utils.load_crypto_configfile(crypto_fpath, is_sec=True, sec_key=self.__file_key)
         except:
             print("crypto configfile should be json file")
             sys.exit(-1)
@@ -480,13 +484,12 @@ class fdslight_client(dispatcher.dispatcher):
             "AAAA": {}
         }
 
-        path = "%s/hosts.json" % self.__conf_dir
+        path = "%s/hosts.json.sec" % self.__conf_dir
         if not os.path.isfile(path):
             logging.print_error("not found %s hosts file" % path)
             return
-        with open(path, "r") as f:
-            s = f.read()
-        f.close()
+
+        s = file_sec.decypt_file_no_gen_file(path, self.__file_key).decode()
 
         try:
             hosts = json.loads(s)
@@ -525,9 +528,9 @@ class fdslight_client(dispatcher.dispatcher):
     def __set_rules(self):
         self.load_hosts()
         fpaths = [
-            "%s/host_rules.txt" % self.__conf_dir,
-            "%s/ip_rules.txt" % self.__conf_dir,
-            "%s/pre_load_ip_rules.txt" % self.__conf_dir
+            "%s/host_rules.txt.sec" % self.__conf_dir,
+            "%s/ip_rules.txt.sec" % self.__conf_dir,
+            "%s/pre_load_ip_rules.txt.sec" % self.__conf_dir
         ]
 
         for fpath in fpaths:
@@ -536,13 +539,13 @@ class fdslight_client(dispatcher.dispatcher):
                 return
             ''''''
         try:
-            rules = file_parser.parse_host_file(fpaths[0])
+            rules = file_parser.parse_host_file(fpaths[0], is_sec=True, sec_key=self.__file_key)
             self.get_handler(self.__dns_fileno).set_host_rules(rules)
 
-            rules = file_parser.parse_ip_subnet_file(fpaths[1])
+            rules = file_parser.parse_ip_subnet_file(fpaths[1], is_sec=True, sec_key=self.__file_key)
             self.get_handler(self.__dns_fileno).set_ip_rules(rules)
 
-            rules = file_parser.parse_ip_subnet_file(fpaths[2])
+            rules = file_parser.parse_ip_subnet_file(fpaths[2], is_sec=True, sec_key=self.__file_key)
             self.__set_static_ip_rules(rules)
 
         except file_parser.FilefmtErr:
@@ -1079,8 +1082,9 @@ class fdslight_client(dispatcher.dispatcher):
         return ipaddr
 
     def load_racs_configs(self):
-        fpath = "%s/racs.ini" % self.__conf_dir
-        configs = configfile.ini_parse_from_file(fpath)
+        fpath = "%s/racs.ini.sec" % self.__conf_dir
+        s = file_sec.decypt_file_no_gen_file(fpath, self.__file_key).decode()
+        configs = configfile.ini_parse_from_sts(s)
         conn = configs["connection"]
         network = configs["network"]
 
@@ -1109,11 +1113,11 @@ class fdslight_client(dispatcher.dispatcher):
         self.send_msg_to_tun(msg)
 
 
-def __start_service(conf_dir):
+def __start_service(conf_dir, sec_key):
     cls = fdslight_client()
 
     try:
-        cls.ioloop(conf_dir)
+        cls.ioloop(conf_dir, sec_key)
     except KeyboardInterrupt:
         cls.release()
     ''''''
@@ -1148,7 +1152,17 @@ def main():
         return
 
     print("NOTE:use configure directory %s" % c)
-    __start_service(c)
+    print()
+    print("**-----------INPUT SOFTWARE CONFIGURE SECURITY KEY----------------**")
+    # 载入配置文件密钥
+    sec_key = input("please input configure file security key:")
+    print("**----------------------------------------------------------------**")
+
+    if not sec_key:
+        print("ERROR:configure file security key is empty")
+        return
+
+    __start_service(c, sec_key)
 
 
 if __name__ == '__main__': main()
