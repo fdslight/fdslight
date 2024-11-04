@@ -677,6 +677,8 @@ class dot_client(tcp_handler.tcp_handler):
 
     def tcp_delete(self):
         if self.__debug:
+            if not self.is_conn_ok():
+                print("DoT:cannot connect to host %s" % self.__host)
             print("DoT:delete DoT connect object from host %s" % self.__host)
         self.dispatcher.tell_dot_close()
         self.__tmp_buf = []
