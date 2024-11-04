@@ -18,7 +18,8 @@ def write_kern_ver_to_file(fpath):
 
 def __build_fn_utils(cflags):
     sys_build.do_compile(
-        ["freenet/lib/fn_utils.c","pywind/clib/netutils.c"], "freenet/lib/fn_utils.so", cflags, debug=False, is_shared=True
+        ["freenet/lib/fn_utils.c", "pywind/clib/netutils.c"], "freenet/lib/fn_utils.so", cflags, debug=False,
+        is_shared=True
     )
 
 
@@ -60,6 +61,7 @@ def build_client(cflags, gw_mode=False):
         if os.path.isfile(path):
             os.remove(path)
         shutil.move("driver/fdsl_dgram/fdslight_dgram.ko", "driver")
+    ''''''
 
 
 def main():
