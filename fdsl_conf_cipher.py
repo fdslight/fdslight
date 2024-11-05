@@ -51,6 +51,8 @@ def main():
             dst_path = d + "/" + ".".join(_list)
             file_sec.decrypt_file(fpath, dst_path, key, is_deleted_src_file=True)
             print("NOTE:decrypt file %s OK" % fpath)
+        ''''''
+    ''''''
 
 
 if __name__ == '__main__': main()
