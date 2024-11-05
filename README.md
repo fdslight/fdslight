@@ -13,8 +13,7 @@
 #### **Linux启动停止**
 
 1. 先执行python3 fdsl_install.py local | gateway进行安装
-2. sudo python3 fdsl_client.py -d debug | start | stop -m local | gateway -c
-   your_configure_directory_name_at_fdslight_directory
+2. sudo python3 fdsl_client.py -d debug | start | stop -m local | gateway -c  your_configure_directory_name_at_fdslight_directory
 
 #### **Windows启动停止**
 
