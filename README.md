@@ -20,8 +20,8 @@
 
 1. Windows不需要安装
 2. 复制fdslight_etc目录到fdslight目录下作为你的新配置文件目录,比如my_conf
-3. 修改配置文件后执行python fdsl_conf_encrypt.py进行配置文件加密(Linux系统不需要配置文件加解密)
-4. 如果需要重新修改配置文件,请执行python fdsl_conf_decrypt.py进行解密,修改完毕后再执行加密脚本
+3. 修改配置文件后执行python fdsl_conf_cipher.py encrypt进行配置文件加密(Linux系统不需要配置文件加解密)
+4. 如果需要重新修改配置文件,请执行python fdsl_conf_cipher.py decrypt进行解密,修改完毕后再执行加密脚本
 4. 复制fdslight-sample.bat脚本为自己的脚本名,例如fdslight-win.bat,并修改里面的配置目录
 5. 双击fdslight-win.bat启动,并按照提示输入配置文件解密密钥
 

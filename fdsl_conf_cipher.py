@@ -12,6 +12,17 @@ import freenet.lib.file_sec as file_sec
 
 
 def main():
+    helper_doc = "helper:encrypt or decrypt"
+    if len(sys.argv) != 2:
+        print(helper_doc)
+        return
+
+    if sys.argv[1] not in ("encrypt", "decrypt",):
+        print(helper_doc)
+        return
+
+    action = sys.argv[1]
+
     d = input("please set encrypt diretory:")
 
     if not os.path.isdir(d):
@@ -29,13 +40,17 @@ def main():
         fpath = "%s/%s" % (d, name)
         if not os.path.isfile(fpath): continue
         _list = name.split(".")
-        # 跳过带sec的后缀
+
         x = _list.pop()
-        if x.lower() == "sec": continue
-        file_sec.encrypt_file(fpath, fpath + ".sec", key, is_deleted_src_file=True)
-        print("NOTE:encrypt file %s OK" % fpath)
-    print()
-    print("encrypt done")
+        if action == "encrypt":
+            if x.lower() == "sec": continue
+            file_sec.encrypt_file(fpath, fpath + ".sec", key, is_deleted_src_file=True)
+            print("NOTE:encrypt file %s OK" % fpath)
+        else:
+            if x.lower() != "sec": continue
+            dst_path = d + "/" + ".".join(_list)
+            file_sec.decrypt_file(fpath, dst_path, key, is_deleted_src_file=True)
+            print("NOTE:decrypt file %s OK" % fpath)
 
 
 if __name__ == '__main__': main()
