@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 配置加密工具
-import os, sys
+import os, sys, getpass
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -29,11 +29,17 @@ def main():
         print("ERROR:%s is not a directory" % d)
         return
 
-    key = input("please set key:")
+    key = getpass.getpass("please set security key:")
     if not key:
         print("ERROR:key cannot is empty")
         return
 
+    if action == "encrypt":
+        key2 = getpass.getpass("sure your key again:")
+        if key2 != key:
+            print("ERROR:different key, please try again")
+            return
+        ''''''
     print()
     _list = os.listdir(d)
     for name in _list:

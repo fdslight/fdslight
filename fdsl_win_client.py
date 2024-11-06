@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # fdslight client for windows
-import os, importlib, socket, sys, time, json, zlib, platform, ctypes, winreg
+import os, importlib, socket, sys, time, json, zlib, platform, ctypes, winreg, getpass
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -149,7 +149,7 @@ class fdslight_client(dispatcher.dispatcher):
         config_path = "%s/fn_client.ini.sec" % conf_dir
         self.__conf_dir = conf_dir
 
-        s=file_sec.decypt_file_no_gen_file(config_path,self.__file_key).decode()
+        s = file_sec.decypt_file_no_gen_file(config_path, self.__file_key).decode()
         configs = configfile.ini_parse_from_sts(s)
 
         self.load_driver()
@@ -1155,7 +1155,7 @@ def main():
     print()
     print("**-----------INPUT SOFTWARE CONFIGURE SECURITY KEY----------------**")
     # 载入配置文件密钥
-    sec_key = input("please input configure file security key:")
+    sec_key=getpass.getpass('please input configure file security key:')
     print("**----------------------------------------------------------------**")
 
     if not sec_key:
