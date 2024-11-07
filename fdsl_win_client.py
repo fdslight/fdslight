@@ -357,8 +357,6 @@ class fdslight_client(dispatcher.dispatcher):
         self.send_msg_to_tunnel(action, message)
 
     def handle_msg_from_tunnel(self, seession_id, action, message):
-        self.__last_recv_data_time = time.time()
-
         if seession_id != self.session_id: return
         if action not in proto_utils.ACTS: return
 
@@ -422,6 +420,7 @@ class fdslight_client(dispatcher.dispatcher):
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
     def send_msg_to_tun(self, message):
+        self.__last_recv_data_time = time.time()
         message = self.rewrite_racs_local_ip(message, is_src=False)
         self.send_packet_to_wintun(message)
 
