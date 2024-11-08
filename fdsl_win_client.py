@@ -94,7 +94,7 @@ class fdslight_client(dispatcher.dispatcher):
     __wintun = None
 
     # 最近接收数据的时间
-    __last_recv_data_time = None
+    __last_data_time = None
 
     __file_key = None
 
@@ -142,7 +142,7 @@ class fdslight_client(dispatcher.dispatcher):
 
     def init_func(self, conf_dir, file_key: str):
         self.__file_key = file_key
-        self.__last_recv_data_time = time.time()
+        self.__last_data_time = time.time()
         # 首先清理一次注册表,非法关闭时注册表不会清空
         self.__clear_winreg()
         self.__debug = True
@@ -282,9 +282,7 @@ class fdslight_client(dispatcher.dispatcher):
         :param message:
         :return:
         """
-        # 如果网卡数据为空那么跳过
-        if not message: return
-
+        self.__last_data_time = time.time()
         self.__mbuf.copy2buf(message)
 
         ip_ver = self.__mbuf.ip_version()
@@ -420,7 +418,7 @@ class fdslight_client(dispatcher.dispatcher):
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
     def send_msg_to_tun(self, message):
-        self.__last_recv_data_time = time.time()
+        self.__last_data_time = time.time()
         message = self.rewrite_racs_local_ip(message, is_src=False)
         self.send_packet_to_wintun(message)
 
@@ -762,11 +760,12 @@ class fdslight_client(dispatcher.dispatcher):
     def myloop(self):
         now = time.time()
         # 通过不断主动轮询读取网卡数据
-        tun_recv_data = self.__wintun.read()
-        self.handle_msg_from_tundev(tun_recv_data)
-
+        for i in range(32):
+            tun_recv_data = self.__wintun.read()
+            if not tun_recv_data: break
+            self.handle_msg_from_tundev(tun_recv_data)
         # 如果大于指定时间没收到数据,那么等待一段时间,减少CPU时间占用
-        if now - self.__last_recv_data_time > 2:
+        if now - self.__last_data_time > 5:
             # 这里时间需要尽量少,避免收到数据包未及时响应
             self.__wintun.wait_read_event(20)
         ''''''
