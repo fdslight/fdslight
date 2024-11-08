@@ -16,7 +16,7 @@ def ip4s_2_number(string):
 
 def rand_string(length):
     """生成随机KEY"""
-    sts = "0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM@!&*()-+~<>?{}\|/,.`"
+    sts = "0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
     size = len(sts)
     tmplist = []
     for i in range(length):
