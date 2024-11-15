@@ -773,11 +773,12 @@ class fdslight_client(dispatcher.dispatcher):
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
 
-        if self.__racs_cfg["connection"]["enable"]:
-            self.racs_reset()
-
         if self.enable_dot and self.dot_fd < 0:
             self.dot_open()
+            
+        if self.__racs_cfg["connection"]["enable"]:
+            self.racs_reset()
+        ''''''
 
     def set_route(self, host, prefix=None, timeout=None, is_ipv6=False, is_dynamic=True):
         if host in self.__routes: return

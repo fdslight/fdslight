@@ -942,11 +942,11 @@ class _fdslight_client(dispatcher.dispatcher):
             self.reset_traffic()
             self.__traffic_up_time = t
 
-        if self.__racs_cfg["connection"]["enable"]:
-            self.racs_reset()
-
         if self.enable_dot and self.dot_fd < 0:
             self.dot_open()
+
+        if self.__racs_cfg["connection"]["enable"]:
+            self.racs_reset()
 
     def set_route(self, host, prefix=None, timeout=None, is_ipv6=False, is_dynamic=True):
         if host in self.__routes: return
