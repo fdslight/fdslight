@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-import os
-import sys
-import shutil
+import os, sys, shutil, platform
 import pywind.lib.sys_build as sys_build
 
 
@@ -90,6 +88,12 @@ def main():
         return
 
     cflags = " -I %s" % py_include
+
+    os_type = platform.system().lower()
+
+    if os_type not in ("linux",):
+        print("ERROR:not support your platform")
+        return
 
     if mode == "gateway":
         build_client(cflags, gw_mode=True)
