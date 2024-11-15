@@ -1094,7 +1094,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         return s == ip_route
 
-    def m_local_ip(self, netpkt: bytes, is_src=False):
+    def rewrite_racs_local_ip(self, netpkt: bytes, is_src=False):
 
         version = (netpkt[0] & 0xf0) >> 4
         network = self.racs_configs["network"]
