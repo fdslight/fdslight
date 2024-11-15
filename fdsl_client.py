@@ -945,6 +945,9 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
 
+        if self.enable_dot and self.dot_fd < 0:
+            self.dot_open()
+
     def set_route(self, host, prefix=None, timeout=None, is_ipv6=False, is_dynamic=True):
         if host in self.__routes: return
         # 如果是服务器的地址,那么不设置路由,避免使用ip_rules规则的时候进入死循环,因为服务器地址可能不在ip_rules文件中
@@ -1091,7 +1094,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         return s == ip_route
 
-    def rewrite_racs_local_ip(self, netpkt: bytes, is_src=False):
+    def m_local_ip(self, netpkt: bytes, is_src=False):
 
         version = (netpkt[0] & 0xf0) >> 4
         network = self.racs_configs["network"]
