@@ -187,13 +187,13 @@ class fdslight_client(dispatcher.dispatcher):
         is_ipv6 = utils.is_ipv6_address(public["remote_dns"])
 
         self.__enable_dot = bool(int(public.get("enable_dot", "0")))
-        dot_auth_host = public.get("dot_auth_host", public["remote_dns"])
+        dot_auth_host = public.get("dot_auth_host", public["dot_host"])
         self.__dot_auth_host = dot_auth_host
-        self.__dot_host = public['remote_dns']
+        self.__dot_host = public['dot_host']
 
         if self.__enable_dot:
-            self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, public['remote_dns'], dot_auth_host,
-                                                    is_ipv6=is_ipv6, debug=self.debug)
+            self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
+                                                    is_ipv6=netutils.is_ipv6_address(self.__dot_host), debug=self.debug)
         self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                 debug=self.debug,
                                                 server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
@@ -775,7 +775,7 @@ class fdslight_client(dispatcher.dispatcher):
 
         if self.enable_dot and self.dot_fd < 0:
             self.dot_open()
-            
+
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
         ''''''

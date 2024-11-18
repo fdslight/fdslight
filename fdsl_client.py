@@ -236,11 +236,11 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__enable_dot = bool(int(public.get("enable_dot", "0")))
         dot_auth_host = public.get("dot_auth_host", public["remote_dns"])
         self.__dot_auth_host = dot_auth_host
-        self.__dot_host = public['remote_dns']
+        self.__dot_host = public['dot_host']
 
         if self.__enable_dot:
-            self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, public['remote_dns'], dot_auth_host,
-                                                    is_ipv6=is_ipv6, debug=debug)
+            self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
+                                                    is_ipv6=netutils.is_ipv6_address(self.__dot_host), debug=self.debug)
         if self.__mode == _MODE_GW:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind"], debug=debug,
                                                     server_side=True, is_ipv6=False,
