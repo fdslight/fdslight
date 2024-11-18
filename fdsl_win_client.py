@@ -189,7 +189,7 @@ class fdslight_client(dispatcher.dispatcher):
         self.__enable_dot = bool(int(public.get("enable_dot", "0")))
         dot_auth_host = public.get("dot_auth_host", public["dot_host"])
         self.__dot_auth_host = dot_auth_host
-        self.__dot_host = public['dot_host']
+        self.__dot_host = public.get("dot_host", public["remote_dns"])
 
         if self.__enable_dot:
             self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
