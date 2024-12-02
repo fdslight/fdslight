@@ -214,11 +214,8 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
         elif mode == "proxy_all_ipv4":
             self.__mode = _MODE_PROXY_ALL_IP4
-        elif mode == "proxy_all_ipv6":
-            self.__mode = _MODE_PROXY_ALL_IP6
         else:
-            self.__mode = _MODE_GW
-            self.__load_kernel_mod()
+            self.__mode = _MODE_PROXY_ALL_IP6
 
         self.__mbuf = utils.mbuf()
         self.__debug = debug
@@ -226,7 +223,6 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__tundev_fileno = self.create_handler(-1, tundev.tundevc, self.__devname)
 
         public = configs["public"]
-        gateway = configs["gateway"]
 
         self.__enable_ipv6_traffic = bool(int(public["enable_ipv6_traffic"]))
         enable_ipv6_dns_drop = bool(int(public.get("enable_ipv6_dns_drop", "0")))
@@ -241,37 +237,15 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__enable_dot:
             self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
                                                     is_ipv6=netutils.is_ipv6_address(self.__dot_host), debug=self.debug)
-        if self.__mode == _MODE_GW:
-            self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind"], debug=debug,
-                                                    server_side=True, is_ipv6=False,
-                                                    enable_ipv6_dns_drop=enable_ipv6_dns_drop)
-            if self.__enable_ipv6_traffic:
-                self.__dns_listen6 = self.create_handler(-1, dns_proxy.dnsc_proxy, gateway["dnsserver_bind6"],
-                                                         debug=debug, server_side=True, is_ipv6=True,
-                                                         enable_ipv6_dns_drop=enable_ipv6_dns_drop)
-                self.get_handler(self.__dns_listen6).set_parent_dnsserver(public["remote_dns"], is_ipv6=is_ipv6)
-        elif self.__mode == _MODE_PROXY_ALL_IP4:
-            pass
-        elif self.__mode == _MODE_PROXY_ALL_IP6:
-            pass
-        else:
+        if self.__mode == _MODE_LOCAL:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                     debug=debug,
-                                                    server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
+                                                    enable_ipv6_dns_drop=enable_ipv6_dns_drop)
 
         if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
-            if self.__mode == _MODE_GW: self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"],
-                                                                                                 is_ipv6=is_ipv6)
             self.__set_rules(None, None)
 
-        if self.__mode == _MODE_GW:
-            udp_global = bool(int(gateway["dgram_global_proxy"]))
-            if udp_global:
-                self.__dgram_fetch_fileno = self.create_handler(-1, traffic_pass.traffic_read,
-                                                                self.__configs["gateway"],
-                                                                enable_ipv6=self.__enable_ipv6_traffic)
-            ''''''
-        elif self.__mode == _MODE_PROXY_ALL_IP4:
+        if self.__mode == _MODE_PROXY_ALL_IP4:
             # 如果VPS主机仅仅支持IPv6,那么转发所有流量到有IPv4的主机
             self.set_route("0.0.0.0", prefix=0, is_ipv6=False, is_dynamic=False)
         elif self.__mode == _MODE_PROXY_ALL_IP6:
@@ -1402,7 +1376,7 @@ def __reset_traffic(c):
 def main():
     help_doc = """
     -d      debug | start | stop    debug,start or stop application
-    -m      local | gateway | proxy_all_ipv4 | proxy_all_ipv6 
+    -m      local | proxy_all_ipv4 | proxy_all_ipv6 
     -u      rules | reset_traffic    update host and ip rules or reset traffic
     -c      set config directory,default is fdslight_etc
     """
@@ -1453,7 +1427,7 @@ def main():
         __stop_service(c)
         return
 
-    if m not in ("local", "gateway", "proxy_all_ipv4", "proxy_all_ipv6",):
+    if m not in ("local", "proxy_all_ipv4", "proxy_all_ipv6",):
         print(help_doc)
         return
 

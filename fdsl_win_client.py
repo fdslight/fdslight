@@ -196,7 +196,7 @@ class fdslight_client(dispatcher.dispatcher):
                                                     is_ipv6=netutils.is_ipv6_address(self.__dot_host), debug=self.debug)
         self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                 debug=self.debug,
-                                                server_side=False, enable_ipv6_dns_drop=enable_ipv6_dns_drop)
+                                                enable_ipv6_dns_drop=enable_ipv6_dns_drop)
 
         self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"],
                                                                  is_ipv6=is_ipv6)
@@ -252,9 +252,9 @@ class fdslight_client(dispatcher.dispatcher):
         machine = platform.machine().lower()
         # 限制支持ARM64与AMD64的windows
         if machine == 'aarch64':
-            driver_path = "%s/driver/wintun/arm64/wintun.dll" % BASE_DIR
+            driver_path = "%s/drivers/wintun/arm64/wintun.dll" % BASE_DIR
         else:
-            driver_path = "%s/driver/wintun/amd64/wintun.dll" % BASE_DIR
+            driver_path = "%s/drivers/wintun/amd64/wintun.dll" % BASE_DIR
 
         self.__wintun = wintun_wrapper.Wintun(driver_path, ignore_cmd_output=True)
 

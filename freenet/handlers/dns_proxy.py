@@ -74,49 +74,6 @@ class dns_base(udp_handler.udp_handler):
         print(self.__dns_id_map)
 
 
-class udp_client_for_dns(udp_handler.udp_handler):
-    __creator = None
-    __address = None
-
-    def init_func(self, creator, address, is_ipv6=False):
-        self.__address = address
-
-        if is_ipv6:
-            fa = socket.AF_INET6
-        else:
-            fa = socket.AF_INET
-
-        self.__creator = creator
-        s = socket.socket(fa, socket.SOCK_DGRAM)
-
-        self.set_socket(s)
-        self.connect((address, 53))
-        self.register(self.fileno)
-        self.add_evt_read(self.fileno)
-
-        return self.fileno
-
-    def udp_readable(self, message, address):
-        if address[0] != self.__address: return
-        if address[1] != 53: return
-
-        self.send_message_to_handler(self.fileno, self.__creator, message)
-
-    def udp_writable(self):
-        self.remove_evt_write(self.fileno)
-
-    def udp_error(self):
-        self.delete_handler(self.fileno)
-
-    def udp_delete(self):
-        self.unregister(self.fileno)
-        self.close()
-
-    def message_from_handler(self, from_fd, message):
-        self.add_evt_write(self.fileno)
-        self.send(message)
-
-
 class dnsc_proxy(dns_base):
     """客户端的DNS代理
     """
@@ -130,14 +87,11 @@ class dnsc_proxy(dns_base):
 
     __debug = False
     __dnsserver = None
-    __server_side = False
-
-    __udp_client = None
     __is_ipv6 = False
 
     __enable_ipv6_dns_drop = None
 
-    def init_func(self, creator, address, debug=False, server_side=False, is_ipv6=False, enable_ipv6_dns_drop=False):
+    def init_func(self, creator, address, debug=False, is_ipv6=False, enable_ipv6_dns_drop=False):
         if is_ipv6:
             fa = socket.AF_INET6
         else:
@@ -147,23 +101,15 @@ class dnsc_proxy(dns_base):
 
         s = socket.socket(fa, socket.SOCK_DGRAM)
 
-        if server_side and is_ipv6:
-            s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-
         self.set_socket(s)
-        self.__server_side = server_side
         self.__dnsserver = ""
 
-        if server_side:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.bind((address, 53))
+        if is_ipv6:
+            self.bind(("::", 0))
         else:
-            if is_ipv6:
-                self.bind(("::", 0))
-            else:
-                self.bind(("0.0.0.0", 0))
-            self.__dnsserver = address
-            # self.connect((address, 53))
+            self.bind(("0.0.0.0", 0))
+        self.__dnsserver = address
+        # self.connect((address, 53))
 
         self.__debug = debug
         self.__timer = timer.timer()
@@ -201,14 +147,6 @@ class dnsc_proxy(dns_base):
             if not rs: logging.print_error("wrong ip format %s/%s on ip_rules" % (subnet, prefix,))
         ''''''
 
-    def set_parent_dnsserver(self, server, is_ipv6=False):
-        """当作为网关模式时需要调用此函数来设置上游DNS
-        :param server:
-        :return:
-        """
-        self.__dnsserver = server
-        self.__udp_client = self.create_handler(self.fileno, udp_client_for_dns, server, is_ipv6=is_ipv6)
-
     def __set_route(self, ip, flags, is_ipv6=False):
         """设置路由
         :param ip:
@@ -226,7 +164,7 @@ class dnsc_proxy(dns_base):
             self.dispatcher.set_route(ip, is_ipv6=is_ipv6, is_dynamic=True)
             return
 
-    def resp_dns_packet_for_no_server_side(self, saddr, daddr, sport, dport, message, mtu, is_ipv6=False):
+    def resp_dns_packet(self, saddr, daddr, sport, dport, message, mtu, is_ipv6=False):
         packets = ippkts.build_udp_packets(saddr, daddr, sport, dport, message, mtu=mtu, is_ipv6=is_ipv6)
         for packet in packets:
             self.dispatcher.send_msg_to_tun(packet)
@@ -259,32 +197,13 @@ class dnsc_proxy(dns_base):
                     self.__set_route(ip, flags, is_ipv6=True)
             ''''''
         ''''''
-        if not self.__server_side:
-            if self.__is_ipv6:
-                mtu = 1280
-            else:
-                mtu = 1500
-            self.resp_dns_packet_for_no_server_side(saddr, daddr, 53, dport, message, mtu, is_ipv6=self.__is_ipv6)
-            self.del_dns_id_map(dns_id)
-            self.__timer.drop(dns_id)
-            return
-
-        if self.__is_ipv6 != is_ipv6 and self.__server_side:
-            if self.__is_ipv6:
-                is_ipv6 = False
-            else:
-                is_ipv6 = True
-            self.dispatcher.send_msg_to_other_dnsservice_for_dns_response(message, is_ipv6=is_ipv6)
-
         if self.__is_ipv6:
-            sts_daddr = socket.inet_ntop(socket.AF_INET6, daddr)
+            mtu = 1280
         else:
-            sts_daddr = socket.inet_ntop(socket.AF_INET, daddr)
-
+            mtu = 1500
+        self.resp_dns_packet(saddr, daddr, 53, dport, message, mtu, is_ipv6=self.__is_ipv6)
         self.del_dns_id_map(dns_id)
         self.__timer.drop(dns_id)
-        self.sendto(message, (sts_daddr, dport))
-        self.add_evt_write(self.fileno)
 
     def __handle_msg_for_request(self, saddr, daddr, sport, message, is_ipv6=False):
         # 检查DoT是否启用,开启DoT并且DoT失连,那么重新打开DoT
@@ -306,16 +225,12 @@ class dnsc_proxy(dns_base):
 
         if len(questions) != 1 or msg.opcode() != 0:
             # self.send_message_to_handler(self.fileno, self.__udp_client, message)
-            if self.__server_side:
-                self.send_message_to_handler(self.fileno, self.__udp_client, message)
+            # 如果开启DoT并且DoT连不上那么使用传统DNS查询
+            if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
+                self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
             else:
-                # 如果开启DoT并且DoT连不上那么使用传统DNS查询
-                if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
-                    self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
-                else:
-                    self.sendto(message, (self.__dnsserver, 53))
-                    self.add_evt_write(self.fileno)
-                ''''''
+                self.sendto(message, (self.__dnsserver, 53))
+                self.add_evt_write(self.fileno)
             return
 
         """
@@ -367,12 +282,7 @@ class dnsc_proxy(dns_base):
             ''''''
 
         if hosts_resp_flags:
-            if self.__server_side:
-                self.sendto(resp_msg, (saddr, sport,))
-                self.add_evt_write(self.fileno)
-            else:
-                self.resp_dns_packet_for_no_server_side(daddr, saddr, 53, sport, resp_msg, mtu, is_ipv6=self.__is_ipv6)
-
+            self.resp_dns_packet(daddr, saddr, 53, sport, resp_msg, mtu, is_ipv6=self.__is_ipv6)
             return
 
         is_match, flags = self.__host_match.match(host)
@@ -414,31 +324,22 @@ class dnsc_proxy(dns_base):
                     print("DNS_QUERY_DROP:%s" % host)
                 return
             elif flags == 3:
-                if self.__server_side:
-                    self.send_message_to_handler(self.fileno, self.__udp_client, message)
+                # 如果开启DoT并且DoT连不上那么使用传统DNS查询
+                if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
+                    self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
                 else:
-                    # 如果开启DoT并且DoT连不上那么使用传统DNS查询
-                    if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
-                        self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
-                    else:
-                        self.sendto(message, (self.__dnsserver, 53))
-                        self.add_evt_write(self.fileno)
-                    ''''''
+                    self.sendto(message, (self.__dnsserver, 53))
+                    self.add_evt_write(self.fileno)
                 ''''''
             else:
                 self.dispatcher.send_msg_to_tunnel(proto_utils.ACT_DNS, message)
             return
-
-        if self.__server_side:
-            self.send_message_to_handler(self.fileno, self.__udp_client, message)
+        # 如果开启DoT并且DoT连不上那么使用传统DNS查询
+        if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
+            self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
         else:
-            # 如果开启DoT并且DoT连不上那么使用传统DNS查询
-            if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
-                self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
-            else:
-                self.sendto(message, (self.__dnsserver, 53))
-                self.add_evt_write(self.fileno)
-            ''''''
+            self.sendto(message, (self.__dnsserver, 53))
+            self.add_evt_write(self.fileno)
         return
 
     def message_from_handler(self, from_fd, message):
@@ -459,14 +360,6 @@ class dnsc_proxy(dns_base):
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
 
     def udp_readable(self, message, address):
-        if self.__server_side:
-            if self.__is_ipv6:
-                byte_saddr = socket.inet_pton(socket.AF_INET6, address[0])
-            else:
-                byte_saddr = socket.inet_pton(socket.AF_INET, address[0])
-            self.__handle_msg_for_request(byte_saddr, None, address[1], message, is_ipv6=self.__is_ipv6)
-            return
-
         if address[0] != self.__dnsserver: return
         if address[1] != 53: return
 
