@@ -759,15 +759,19 @@ class fdslight_client(dispatcher.dispatcher):
 
     def myloop(self):
         now = time.time()
-        # 通过不断主动轮询读取网卡数据
-        for i in range(32):
-            tun_recv_data = self.__wintun.read()
-            if not tun_recv_data: break
-            self.handle_msg_from_tundev(tun_recv_data)
+        if self.__wintun.readable():
+            # 通过不断主动轮询读取网卡数据
+            for i in range(32):
+                tun_recv_data = self.__wintun.read()
+                if not tun_recv_data and not self.__wintun.readable(): break
+                if not tun_recv_data: continue
+                self.handle_msg_from_tundev(tun_recv_data)
+            ''''''
+        ''''''
         # 如果大于指定时间没收到数据,那么等待一段时间,减少CPU时间占用
         if now - self.__last_data_time >= 3:
             # 这里时间需要尽量少,避免收到数据包未及时响应
-            #self.__wintun.wait_read_event(1000)
+            # self.__wintun.wait_read_event(1000)
             self.set_default_io_wait_time(1)
         else:
             self.set_default_io_wait_time(0)
