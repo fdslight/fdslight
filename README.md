@@ -1,4 +1,4 @@
-#### **代理软件功能说明**
+#### **IP层代理软件功能说明**
 
 1. 使用分发规则：DNS名单内和指定IP使用代理,指定IP外使用代理
 2. 服务端使用ixc_ProxyServd软件,本软件不再包含,地址 https://github.com/fdslight/ixc_ProxyServd
