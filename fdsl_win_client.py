@@ -198,8 +198,6 @@ class fdslight_client(dispatcher.dispatcher):
                                                 debug=self.debug,
                                                 enable_ipv6_dns_drop=enable_ipv6_dns_drop)
 
-        self.get_handler(self.__dns_fileno).set_parent_dnsserver(public["remote_dns"],
-                                                                 is_ipv6=is_ipv6)
         self.__set_rules()
         local = configs["local"]
 
