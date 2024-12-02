@@ -17,10 +17,8 @@ import freenet.lib.base_proto.utils as proto_utils
 import freenet.lib.proc as proc
 import freenet.handlers.tundev as tundev
 import freenet.handlers.dns_proxy as dns_proxy
-import freenet.lib.fdsl_ctl as fdsl_ctl
 import freenet.handlers.tunnelc as tunnelc
 import freenet.lib.file_parser as file_parser
-import freenet.handlers.traffic_pass as traffic_pass
 import freenet.lib.logging as logging
 import freenet.lib.fn_utils as fn_utils
 import freenet.lib.os_resolv as os_resolv
@@ -316,33 +314,6 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__enable_ipv6_traffic:
             os.system("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding")
         return
-
-    def __load_kernel_mod(self):
-        ko_file = "%s/driver/fdslight_dgram.ko" % BASE_DIR
-
-        if not os.path.isfile(ko_file):
-            print("you must install this software")
-            sys.exit(-1)
-
-        fpath = "%s/kern_version" % BASE_DIR
-        if not os.path.isfile(fpath):
-            print("you must install this software")
-            sys.exit(-1)
-
-        with open(fpath, "r") as f:
-            cp_ver = f.read()
-            fp = os.popen("uname -r")
-            now_ver = fp.read()
-            fp.close()
-
-        if cp_ver != now_ver:
-            print("the kernel is changed,please reinstall this software")
-            sys.exit(-1)
-
-        path = "/dev/%s" % fdsl_ctl.FDSL_DEV_NAME
-        if os.path.exists(path): os.system("rmmod fdslight_dgram")
-
-        os.system("insmod %s" % ko_file)
 
     def handle_msg_from_tundev(self, message):
         """处理来TUN设备的数据包
