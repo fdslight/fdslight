@@ -1,9 +1,8 @@
 #### **代理软件功能说明**
 
-1. TCP使用分发规则：在名单内的使用代理。
-2. 可以指定特定局域网客户机进行UDP全局代理，该功能为游戏联机准备(gateway模式,only Linux,该功能基本不维护,请使用ixcsys)
-3. 服务端使用ixc_ProxyServd软件,本软件不再包含,地址 https://github.com/fdslight/ixc_ProxyServd
-4. 每个版本rules是固定的，请下载版本后从实时源码中下载rules
+1. 使用分发规则：DNS名单内和指定IP使用代理,指定IP外使用代理
+2. 服务端使用ixc_ProxyServd软件,本软件不再包含,地址 https://github.com/fdslight/ixc_ProxyServd
+3. 每个版本rules是固定的，请下载版本后从实时源码中下载rules
 
 #### **pip依赖**
 
@@ -12,9 +11,10 @@
 
 #### **Linux启动停止**
 
-1. 先执行python3 fdsl_install.py local | gateway进行安装
-2. sudo python3 fdsl_client.py -d debug | start | stop -m local | gateway -c  your_configure_directory_name_at_fdslight_directory
-
+1. 先执行python3 fdsl_install.py \[python3_header_file_directory\]
+2. 默认代理方式:sudo python3 fdsl_client.py -d debug | start | stop -m local -c  your_configure_directory_name_at_fdslight_directory
+3. 代理全部IPv6流量:sudo python3 fdsl_client.py -d debug | start | stop -m proxy_all_ipv6 -c  your_configure_directory_name_at_fdslight_directory
+4. 代理全部IPv4流量:sudo python3 fdsl_client.py -d debug | start | stop -m proxy_all_ipv4 -c  your_configure_directory_name_at_fdslight_directory
 #### **Windows启动停止**
 
 1. Windows不需要安装
