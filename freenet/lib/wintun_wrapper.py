@@ -16,14 +16,14 @@ class Wintun(object):
     __ignore_cmd_output = None
 
     def __init__(self, dll_path: str, ignore_cmd_output=False):
-        self.__ignore_cmd_output=ignore_cmd_output
+        self.__ignore_cmd_output = ignore_cmd_output
         self.__wintun = ctypes.CDLL(dll_path)
 
     def __exe_cmd(self, cmd):
         if not self.__ignore_cmd_output:
             os.system(cmd)
             return
-        cmd+=" 2>nul"
+        cmd += " 2>nul"
         fd = os.popen(cmd)
         fd.close()
 
@@ -82,6 +82,10 @@ class Wintun(object):
 
         self.__wintun.WintunEndSession.argtypes = [ctypes.c_void_p]
         self.__wintun.WintunEndSession(self.__session)
+
+    def readable(self):
+        if ctypes.windll.kernel32.GetLastError() != 259: return True
+        return False
 
     def wait_read_event(self, misc_timeout: int):
         self.__wintun.WintunGetReadWaitEvent.argtypes = [ctypes.c_void_p]
