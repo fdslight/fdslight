@@ -8,6 +8,7 @@
 *.nflxsearch.net:1
 *.nflxso.net:1
 *.openai.com:1
+*.chatgpt.com:1
 *.reddit.com:1
 *.redditstatic.com:1
 *.redditmedia.com:1
