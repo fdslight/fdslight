@@ -15,3 +15,4 @@
 *.redd.it:1
 *.amazonaws.com:1
 *.cdn.cloudflare.net:1
+*.tw:1
