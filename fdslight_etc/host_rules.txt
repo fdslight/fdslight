@@ -288,6 +288,7 @@ security.debian.org:1
 *.gfw.report:1
 *.zoom.us:1
 *.hostloc.com:1
+*.fwupd.org:1
 
 ### 书籍文化
 *.pressstore.com.tw:1
@@ -340,6 +341,7 @@ login.oracle.com:1
 *.chinese-family.com:1
 *.yanjinggongju.com:1
 *.bible:1
+*.zanmei.ai:1
 
 # tw相关
 *.tw:1
