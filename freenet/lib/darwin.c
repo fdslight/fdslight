@@ -13,7 +13,7 @@
 #define UTUN_CONTROL_NAME "com.apple.net.utun_control"
 #define UTUN_OPT_IFNAME 2
 
-int open_tun_socket () {
+int open_tun_socket (int o_nonblock_flags) {
   struct sockaddr_ctl addr;
   struct ctl_info info;
   char ifname[20];
@@ -43,11 +43,14 @@ int open_tun_socket () {
   err = getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &ifname_len);
   if (err != 0) goto on_error;
 
-  printf("%s\r\n",ifname);
+  //printf("%s\r\n",ifname);
 
   // There is to close the socket,But in this case I don't need it.
+  if(o_nonblock_flags){
   //err = fcntl(fd, F_SETFL, O_NONBLOCK);
   //if (err != 0) goto on_error;
+  }
+
 
   //fcntl(fd, F_SETFD, FD_CLOEXEC);
   //if (err != 0) goto on_error;
