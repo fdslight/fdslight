@@ -47,10 +47,9 @@ int open_tun_socket (int o_nonblock_flags) {
 
   // There is to close the socket,But in this case I don't need it.
   if(o_nonblock_flags){
-  //err = fcntl(fd, F_SETFL, O_NONBLOCK);
-  //if (err != 0) goto on_error;
+    err = fcntl(fd, F_SETFL, O_NONBLOCK);
+    if (err != 0) goto on_error;
   }
-
 
   //fcntl(fd, F_SETFD, FD_CLOEXEC);
   //if (err != 0) goto on_error;
@@ -62,4 +61,9 @@ on_error:
   }
 
   return fd;
+}
+
+void close_tun_socket(int fd)
+{
+  close(fd);
 }
