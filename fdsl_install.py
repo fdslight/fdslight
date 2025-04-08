@@ -10,14 +10,16 @@ def __is_mac_os():
 
 
 def __build_fn_utils(cflags):
-    files=["freenet/lib/fn_utils.c", "pywind/clib/netutils.c"]
+    files = ["freenet/lib/fn_utils.c", "pywind/clib/netutils.c"]
 
     if __is_mac_os():
-        cflags+=" -DDarwin "
+        files += ["freenet/lib/darwin.c"]
+        cflags += " -DDarwin "
     sys_build.do_compile(
         files, "freenet/lib/fn_utils.so", cflags, debug=False,
         is_shared=True
     )
+
 
 def find_python_include_path():
     # MacOS平台专属编译
