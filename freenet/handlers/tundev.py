@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-import os, sys
+import os, sys, socket
+import struct
+
 import pywind.evtframework.handlers.handler as handler
 import freenet.lib.fn_utils as fn_utils
 import freenet.lib.simple_qos as simple_qos
@@ -23,13 +25,15 @@ class tun_base(handler.handler):
     __BLOCK_SIZE = 16 * 1024
 
     __qos = None
+    __af_inet_v = None
+    __af_inet6_v = None
 
     def __create_tun_dev(self, name):
         """创建tun 设备
         :param name:
         :return fd:
         """
-        dev_name,tun_fd = fn_utils.tuntap_create(name, fn_utils.IFF_TUN | fn_utils.IFF_NO_PI)
+        dev_name, tun_fd = fn_utils.tuntap_create(name, fn_utils.IFF_TUN | fn_utils.IFF_NO_PI)
         fn_utils.interface_up(dev_name)
 
         if tun_fd < 0:
@@ -44,12 +48,18 @@ class tun_base(handler.handler):
     def creator(self):
         return self.__creator_fd
 
+    def is_mac_os(self):
+        return self.dispatcher.is_mac_os()
+
     def init_func(self, creator_fd, tun_dev_name, *args, **kwargs):
         """
         :param creator_fd:
         :param tun_dev_name:tun 设备名称
         :param subnet:如果是服务端则需要则个参数
         """
+        self.__af_inet_v = int(socket.AF_INET)
+        self.__af_inet6_v = int(socket.AF_INET6)
+
         tun_fd = self.__create_tun_dev(tun_dev_name)
 
         if tun_fd < 3:
@@ -74,6 +84,11 @@ class tun_base(handler.handler):
                 ip_packet = os.read(self.fileno, self.__BLOCK_SIZE)
             except BlockingIOError:
                 break
+            # mac os的tun设备前面4个字节为af地址族
+            if self.is_mac_os():
+                af, _ = struct.unpack("!I", ip_packet[0:4])
+                if af not in (self.__af_inet_v, self.__af_inet6_v): continue
+                ip_packet = ip_packet[4:]
             self.__qos.add_to_queue(ip_packet)
 
         self.__qos_from_tundev()
@@ -101,6 +116,15 @@ class tun_base(handler.handler):
 
         self.__current_write_queue_n -= 1
         try:
+            # 对mac os的tun设备进行特殊处理,需要加入一个4字节的地址族
+            if self.is_mac_os():
+                ip_ver = (ip_packet[0] & 0xf0) >> 4
+                if ip_ver not in (4, 6,): return
+                if ip_ver == 4:
+                    header = struct.pack("!I", self.__af_inet_v)
+                else:
+                    header = struct.pack("!I", self.__af_inet6_v)
+                ip_packet = header + ip_packet
             os.write(self.fileno, ip_packet)
         except BlockingIOError:
             self.__current_write_queue_n += 1
