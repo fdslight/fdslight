@@ -169,7 +169,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__update_time = time.time()
         self.__header_ok = False
 
-        server_ip = self.dispatcher.get_racs_server_ip(self.__address[0])
+        server_ip = self.dispatcher.get_racs_server_ip(self.__address[0],enable_ipv6=is_ipv6)
 
         if not server_ip:
             logging.print_general("DNS_NOT_FOUND", self.__address)
