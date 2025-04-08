@@ -1,5 +1,9 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include<structmember.h>
+
+#if !defined(Darwin)
+
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -12,7 +16,12 @@
 #include<string.h>
 #include<sys/ioctl.h>
 #include<netinet/in.h>
-#include<structmember.h>
+
+#else
+
+#include "darwin.h"
+
+#endif
 
 #include "../../pywind/clib/netutils.h"
 
@@ -52,9 +61,8 @@ static unsigned short calc_checksum(unsigned short *buffer,int size)
         return (unsigned short)(~sum);
 }
 
-/**
- * 激活接口
- */
+#if !defined(Darwin)
+
 static int
 interface_up(char *interface_name)
 {
@@ -85,20 +93,18 @@ interface_up(char *interface_name)
 	return 0;
 
 }
-/** 获取网卡IP地址 **/
+/*
 int get_nc_ip(const char *eth, char *ipaddr)
 {
 	int sock_fd;
 	struct  sockaddr_in my_addr;
 	struct ifreq ifr;
 
-	/**//* Get socket file descriptor */
 	if ((sock_fd = socket(PF_INET, SOCK_DGRAM, 0)) == -1)
 	{
 		return -1;
 	}
 
-	/**//* Get IP Address */
 	strncpy(ifr.ifr_name, eth, IFNAMSIZ);
 	ifr.ifr_name[IFNAMSIZ-1]='\0';
 
@@ -113,9 +119,6 @@ int get_nc_ip(const char *eth, char *ipaddr)
 	return 0;
 }
 
-/**
- *  设置接口ip地址
- */
 static int
 set_ipaddr(char *interface_name, char *ip)
 {
@@ -142,7 +145,7 @@ set_ipaddr(char *interface_name, char *ip)
 	}
 
 	return 0;
-}
+}*/
 
 /**
  *  创建接口
@@ -177,11 +180,7 @@ tun_create(char *dev, int flags)
 
 	return fd;
 }
-
-/**
- *  增加到x.x.x.x的路由
- *  同命令:route add x.x.x.x dev tun0
- */
+#endif
 
 static PyObject *
 tuntap_create(PyObject *self, PyObject *args)
@@ -194,8 +193,14 @@ tuntap_create(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
+#if !defined(Darwin)
 	ret = tun_create(dev_name, flags);
-	return PyLong_FromLong(ret);
+#else
+	ret= open_tun_socket(dev_name,strlen(dev_name),1);
+#endif
+	return Py_BuildValue("si",dev_name,ret);
+
+	//return PyLong_FromLong(ret);
 }
 
 static PyObject *
@@ -206,13 +211,16 @@ tuntap_interface_up(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "s", &interface))
 		return NULL;
-
+#if !defined(Darwin)
 	ret = interface_up(interface);
-
+#else
+	// macos忽略,始终认为端口是UP
+	ret=0;
+#endif
 	if(ret<0) Py_RETURN_FALSE;
 	Py_RETURN_TRUE;
 }
-
+/*
 static PyObject *
 tuntap_set_ipaddr(PyObject *self, PyObject *args)
 {
@@ -226,7 +234,7 @@ tuntap_set_ipaddr(PyObject *self, PyObject *args)
 
 	if(ret<0) Py_RETURN_FALSE;
 	Py_RETURN_TRUE;
-}
+}*/
 
 static PyObject *
 tuntap_delete(PyObject *self, PyObject *args)
@@ -268,7 +276,7 @@ calc_csum(PyObject *self,PyObject *args)
 
     return PyLong_FromLong(csum);
 }
-
+/*
 static PyObject *
 get_netcard_ip(PyObject *self,PyObject *args)
 {
@@ -280,7 +288,7 @@ get_netcard_ip(PyObject *self,PyObject *args)
     if(err) Py_RETURN_NONE;
 
     return Py_BuildValue("s",eth_ip);
-}
+}*/
 
 static PyObject *
 __is_same_subnet(PyObject *self,PyObject *args)
@@ -350,11 +358,11 @@ modify_ip_address_from_ippkt(PyObject *self,PyObject *args)
 static PyMethodDef UtilsMethods[] = {
 	{"tuntap_create",(PyCFunction)tuntap_create,METH_VARARGS,"create tuntap device"},
 	{"interface_up",(PyCFunction)tuntap_interface_up,METH_VARARGS,"interface up tuntap "},
-	{"set_ipaddr",(PyCFunction)tuntap_set_ipaddr,METH_VARARGS,"set tuntap ip address"},
+	//{"set_ipaddr",(PyCFunction)tuntap_set_ipaddr,METH_VARARGS,"set tuntap ip address"},
 	{"tuntap_delete",(PyCFunction)tuntap_delete,METH_VARARGS,"delete tuntap device ,it equals close"},
 	{"calc_incre_csum",(PyCFunction)calc_incre_csum,METH_VARARGS,"calculate incremental checksum"},
 	{"calc_csum",(PyCFunction)calc_csum,METH_VARARGS,"calculate checksum"},
-	{"get_nc_ip",(PyCFunction)get_netcard_ip,METH_VARARGS,"get netcard ip address"},
+	//{"get_nc_ip",(PyCFunction)get_netcard_ip,METH_VARARGS,"get netcard ip address"},
 	{"is_same_subnet",__is_same_subnet,METH_VARARGS,"is same subnet"},
     {"is_same_subnet_with_msk",__is_same_subnet_with_msk,METH_VARARGS,"is same subnet with mask"},
     {"modify_ip_address_from_netpkt",(PyCFunction)modify_ip_address_from_ippkt,METH_VARARGS,"modify ip address from ip packet"},
@@ -385,6 +393,7 @@ PyInit_fn_utils(void)
 		"TUN_PI_PROTO_SIZE",
 	};
 
+#if !defined(Darwin)
 	const int const_values[] = {
 		IFF_TUN,
 		IFF_TAP,
@@ -394,6 +403,18 @@ PyInit_fn_utils(void)
 		sizeof(__u16),
 		sizeof(__be16)
 	};
+#else
+	// macos直接用0代替
+	const int const_values[] = {
+		0,
+		0,
+		0,
+
+		0,
+		0,
+		0
+	};
+#endif
 
 	int const_count = sizeof(const_names) / sizeof(NULL);
 

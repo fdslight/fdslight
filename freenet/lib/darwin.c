@@ -9,15 +9,15 @@
 #include <ctype.h>
 #include <fcntl.h>
 
+#include "darwin.h"
 
 #define UTUN_CONTROL_NAME "com.apple.net.utun_control"
 #define UTUN_OPT_IFNAME 2
 
-int open_tun_socket (int o_nonblock_flags) {
+int open_tun_socket (char *ifname,size_t ifname_len,int o_nonblock_flags) {
   struct sockaddr_ctl addr;
   struct ctl_info info;
-  char ifname[20];
-  socklen_t ifname_len = sizeof(ifname);
+  socklen_t ifname_len = ifname_len;
   int fd = -1;
   int err = 0;
 

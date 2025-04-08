@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, getopt, signal, importlib, socket, sys, time, json, zlib
+import os, getopt, signal, importlib, socket, sys, time, json, zlib, platform
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -166,6 +166,16 @@ class _fdslight_client(dispatcher.dispatcher):
     def tunnel_conn_fail_count(self):
         return self.__tunnel_conn_fail_count
 
+    def is_mac_os(self):
+        """是否是macos系统
+        """
+        if platform.system().lower().find("darwin") >= 0: return True
+
+        return False
+
+    def set_tun_devname(self, devname: str):
+        self.__devname = devname
+
     def init_func(self, mode, debug, conf_dir):
         config_path = "%s/fn_client.ini" % conf_dir
         self.__conf_dir = conf_dir
@@ -206,6 +216,11 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__cfg_os_net_forward()
 
         self.__devname = self.__configs['public'].get('tun_devname', 'fdslight')
+
+        if len(self.__devname) < 4:
+            raise OSError("illegal tun device name length,it must be 4")
+        if self.is_mac_os() and len(self.__devname) < 5:
+            raise OSError("illegal tun device name length,it must be 5")
 
         if mode == "local":
             self.__mode = _MODE_LOCAL
@@ -306,6 +321,8 @@ class _fdslight_client(dispatcher.dispatcher):
     def __cfg_os_net_forward(self):
         """配置操作系统转发环境
         """
+        # mac os的处理方式
+        if self.is_mac_os(): return
         # 开启ip forward
         os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
         # 禁止接收ICMP redirect 包,防止客户端机器选择最佳路由
@@ -905,7 +922,10 @@ class _fdslight_client(dispatcher.dispatcher):
         # 如果禁止了IPV6流量,那么不设置IPV6路由
         if not self.__enable_ipv6_traffic and is_ipv6: return
         if is_ipv6:
-            s = "-6"
+            if self.is_mac_os():
+                s = "-A inet6"
+            else:
+                s = "-6"
             if prefix is None: prefix = 128
         else:
             s = ""
@@ -925,7 +945,10 @@ class _fdslight_client(dispatcher.dispatcher):
             if name not in self.__static_routes: continue
             return
 
-        cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
+        if self.is_mac_os():
+            cmd = "route %s add -net %s/%s -iface %s" % (s, host, prefix, self.__devname)
+        else:
+            cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
 
         if not is_dynamic:
@@ -946,13 +969,19 @@ class _fdslight_client(dispatcher.dispatcher):
         if is_dynamic: is_ipv6 = self.__routes[host]
 
         if is_ipv6:
-            s = "-6"
+            if self.is_mac_os():
+                s = "-A inet6"
+            else:
+                s = "-6"
             if not prefix: prefix = 128
         else:
             s = ""
             if not prefix: prefix = 32
 
-        cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
+        if self.is_mac_os():
+            cmd = "route %s delete -net %s -iface" % (s, host, prefix, self.__devname)
+        else:
+            cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
 
         if is_dynamic:

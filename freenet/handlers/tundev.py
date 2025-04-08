@@ -29,11 +29,14 @@ class tun_base(handler.handler):
         :param name:
         :return fd:
         """
-        tun_fd = fn_utils.tuntap_create(name, fn_utils.IFF_TUN | fn_utils.IFF_NO_PI)
-        fn_utils.interface_up(name)
+        dev_name,tun_fd = fn_utils.tuntap_create(name, fn_utils.IFF_TUN | fn_utils.IFF_NO_PI)
+        fn_utils.interface_up(dev_name)
 
         if tun_fd < 0:
             raise SystemError("can not create tun device,please check your root")
+
+        # 有些操作系统无法指定tun设备名称,会随机生成,因此需要设置
+        self.dispatcher.set_tun_devname(dev_name)
 
         return tun_fd
 

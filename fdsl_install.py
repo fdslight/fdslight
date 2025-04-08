@@ -3,14 +3,30 @@ import os, sys, platform
 import pywind.lib.sys_build as sys_build
 
 
+def __is_mac_os():
+    """检查是否为mac os系统"""
+    if platform.system().lower().find("darwin") >= 0: return True
+    return False
+
+
 def __build_fn_utils(cflags):
+    files=["freenet/lib/fn_utils.c", "pywind/clib/netutils.c"]
+
+    if __is_mac_os():
+        cflags+=" -DDarwin "
     sys_build.do_compile(
-        ["freenet/lib/fn_utils.c", "pywind/clib/netutils.c"], "freenet/lib/fn_utils.so", cflags, debug=False,
+        files, "freenet/lib/fn_utils.so", cflags, debug=False,
         is_shared=True
     )
 
-
 def find_python_include_path():
+    # MacOS平台专属编译
+    if __is_mac_os():
+        fd = os.popen("python3-config")
+        s = fd.read()
+        fd.close()
+        return s
+
     files = os.listdir("/usr/include")
     result = ""
 
