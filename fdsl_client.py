@@ -1203,9 +1203,15 @@ class _fdslight_client(dispatcher.dispatcher):
         if not self.__local_ip_info:
             self.__update_local_ip()
 
+        # mac os系统始终返回True
+        if self.is_mac_os(): return True
+
         return byte_addr in self.__local_ip_info
 
     def __update_local_ip(self):
+        # mac os不需要更新本地ip
+        if self.is_mac_os(): return
+
         v4_addrs, v6_addrs = os_ifdev.get_os_all_ipaddrs()
 
         for addr in v4_addrs:
