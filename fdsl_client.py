@@ -940,7 +940,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.__os_resolv_time = now
 
-        # mac os定时设置DNS服务器
+        # mac os定时设置DNS服务器,避免网络变更导致dns错误
         if self.is_mac_os():
             self.auto_set_mac_os_dnsserver()
             return
