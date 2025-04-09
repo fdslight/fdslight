@@ -1045,7 +1045,7 @@ class _fdslight_client(dispatcher.dispatcher):
             if not prefix: prefix = 32
 
         if self.is_mac_os():
-            cmd = "route delete %s -net %s -iface %s > /dev/null" % (s, host, prefix, self.__devname)
+            cmd = "route delete %s -net %s/%s -iface %s > /dev/null" % (s, host, prefix, self.__devname)
         else:
             cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
