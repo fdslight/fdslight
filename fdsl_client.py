@@ -188,7 +188,7 @@ class _fdslight_client(dispatcher.dispatcher):
         fd = os.popen("networksetup -listallnetworkservices")
 
         for line in fd:
-            if line.find("disabled") >= 0:continue
+            if line.find("disabled") >= 0: continue
             line = line.strip()
             line = line.replace("\r", "")
             line = line.replace("\n", "")
@@ -199,7 +199,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         for service in services:
             cmd = "networksetup -setdnsservers %s %s %s" % (service, remote_dns, remote_dns6)
-            #print(cmd)
+            # print(cmd)
             os.system(cmd)
         return
 
@@ -1484,6 +1484,12 @@ def main():
     if m not in ("local", "proxy_all_ipv4", "proxy_all_ipv6",):
         print(help_doc)
         return
+
+    if platform.system().lower().startswith("darwin"):
+        if m != "local":
+            print("ERROR:mac os only support local mode")
+            return
+        ''''''
 
     if d in ("start", "debug",):
         debug = False
