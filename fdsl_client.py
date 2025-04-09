@@ -185,10 +185,14 @@ class _fdslight_client(dispatcher.dispatcher):
         ]
         for cmd in cmds: os.system(cmd)
 
-    def auto_set_mac_os_dnsserver(self):
+    def auto_set_mac_os_dnsserver(self, servers=None):
         local = self.__configs["local"]
-        remote_dns = local['virtual_dns']
-        remote_dns6 = local['virtual_dns6']
+        if servers is None:
+            remote_dns = local['virtual_dns']
+            remote_dns6 = local['virtual_dns6']
+            servers = [
+                remote_dns, remote_dns6,
+            ]
         services = []
 
         fd = os.popen("networksetup -listallnetworkservices")
@@ -204,7 +208,7 @@ class _fdslight_client(dispatcher.dispatcher):
         fd.close()
 
         for service in services:
-            cmd = "networksetup -setdnsservers %s %s %s" % (service, remote_dns, remote_dns6)
+            cmd = "networksetup -setdnsservers %s %s" % (service, " ".join(servers))
             # print(cmd)
             os.system(cmd)
         return
@@ -1064,6 +1068,15 @@ class _fdslight_client(dispatcher.dispatcher):
             timeout = self.__ROUTE_TIMEOUT
         self.__route_timer.set_timeout(host, timeout)
 
+    def mac_os_network_backup(self):
+        """mac os网络设置恢复
+        """
+        nameservers = []
+        for k, v in self.__os_resolv_backup:
+            if not netutils.is_ipv6_address(v) and not netutils.is_ipv4_address(v): continue
+            nameservers.append(v)
+        self.auto_set_mac_os_dnsserver(nameservers)
+
     def release(self):
         if self.handler_exists(self.__dns_fileno):
             self.delete_handler(self.__dns_fileno)
@@ -1074,8 +1087,11 @@ class _fdslight_client(dispatcher.dispatcher):
             os.system("rmmod fdslight_dgram")
             os.chdir("../")
         if self.__mode == _MODE_LOCAL:
-            if not self.is_mac_os(): self.__os_resolv.write_to_file(self.__os_resolv_backup)
-
+            if not self.is_mac_os():
+                self.__os_resolv.write_to_file(self.__os_resolv_backup)
+            else:
+                self.mac_os_network_backup()
+            ''''''
         self.delete_handler(self.__tundev_fileno)
 
     def __set_tunnel_ip(self, ip):
