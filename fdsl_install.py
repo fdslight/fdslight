@@ -21,24 +21,21 @@ def __build_fn_utils(cflags):
     )
 
 
-def find_python_include_path():
-    # MacOS平台专属编译
-    if __is_mac_os():
-        fd = os.popen("python3-config")
-        s = fd.read()
-        fd.close()
-        return s
+def get_python_cflags():
 
-    files = os.listdir("/usr/include")
-    result = ""
+    fd = os.popen("python3-config --includes --ldflags")
+    s = fd.read()
+    fd.close()
 
-    for f in files:
-        p = f.find("python3")
-        if p < 0: continue
-        result = "/usr/include/%s" % f
-        break
+    s=s.replace("\r"," ")
+    s=s.replace("\n"," ")
 
-    return result
+    major=str(sys.version_info.major)
+    minor=str(sys.version_info.minor)
+
+    s+=" -lpython%s.%s" % (major,minor)
+
+    return s
 
 
 def build_client(cflags, gw_mode=False):
@@ -54,19 +51,13 @@ def main():
     argv = sys.argv[1:]
 
     if len(argv) == 0:
-        py_include = find_python_include_path()
+        cflags = get_python_cflags()
     else:
-        py_include = argv[0]
-
-    if not os.path.isdir(py_include):
-        print("ERROR:not found python header file %s" % py_include)
-        return
-
-    cflags = " -I %s" % py_include
+        cflags = " ".join(argv)
 
     os_type = platform.system().lower()
 
-    if os_type not in ("linux",):
+    if os_type not in ("linux","darwin"):
         print("ERROR:not support your platform")
         return
 

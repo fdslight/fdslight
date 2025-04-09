@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os, getopt, signal, importlib, socket, sys, time, json, zlib, platform
+from wsgiref.simple_server import server_version
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -124,6 +125,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
     __hosts = None
 
+    __local_ip = None
+    __local_ip6 = None
+    __local_ip_prefix = None
+    __local_ip6_prefix = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -173,6 +179,30 @@ class _fdslight_client(dispatcher.dispatcher):
 
         return False
 
+    def auto_set_mac_os_dnsserver(self):
+        local = self.__configs["local"]
+        remote_dns = local['virtual_dns']
+        remote_dns6 = local['virtual_dns6']
+        services = []
+
+        fd = os.popen("networksetup -listallnetworkservices")
+
+        for line in fd:
+            if line.find("disabled") >= 0:continue
+            line = line.strip()
+            line = line.replace("\r", "")
+            line = line.replace("\n", "")
+            line = line.replace(" ", "\\ ")
+            services.append(line)
+
+        fd.close()
+
+        for service in services:
+            cmd = "networksetup -setdnsservers %s %s %s" % (service, remote_dns, remote_dns6)
+            #print(cmd)
+            os.system(cmd)
+        return
+
     def set_tun_devname(self, devname: str):
         self.__devname = devname
 
@@ -209,6 +239,12 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__local_ip_info = {}
         self.__hosts = {}
 
+        if self.is_mac_os():
+            local = self.__configs["local"]
+
+            self.__local_ip, self.__local_ip_prefix = netutils.parse_ip_with_prefix(local["local_ip"])
+            self.__local_ip6, self.__local_ip6_prefix = netutils.parse_ip_with_prefix(local["local_ip6"])
+
         self.load_traffic_statistics()
         self.load_hosts()
         self.load_racs_configs()
@@ -234,6 +270,9 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__debug = debug
 
         self.__tundev_fileno = self.create_handler(-1, tundev.tundevc, self.__devname)
+
+        if self.is_mac_os():
+            self.__cfg_mac_os_utun()
 
         public = configs["public"]
 
@@ -274,8 +313,10 @@ class _fdslight_client(dispatcher.dispatcher):
 
             _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
 
-            self.__os_resolv.write_to_file(_list)
-
+            if not self.is_mac_os():
+                self.__os_resolv.write_to_file(_list)
+            else:
+                self.auto_set_mac_os_dnsserver()
             self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
             if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
 
@@ -331,6 +372,14 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.__enable_ipv6_traffic:
             os.system("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding")
         return
+
+    def __cfg_mac_os_utun(self):
+        cmds = [
+            "ifconfig %s inet %s/%s %s" % (self.__devname, self.__local_ip, self.__local_ip_prefix, self.__local_ip),
+            "ifconfig %s inet6 %s/%s %s" % (
+                self.__devname, self.__local_ip6, self.__local_ip6_prefix, self.__local_ip6),
+        ]
+        for cmd in cmds: os.system(cmd)
 
     def handle_msg_from_tundev(self, message):
         """处理来TUN设备的数据包
@@ -879,6 +928,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
         self.__os_resolv_time = now
 
+        # mac os定时设置DNS服务器
+        if self.is_mac_os():
+            self.auto_set_mac_os_dnsserver()
+            return
+
         if not self.__os_resolv.file_is_changed(): return
         if self.debug:
             print("NOTE:os resolv.conf is changed")
@@ -923,7 +977,7 @@ class _fdslight_client(dispatcher.dispatcher):
         if not self.__enable_ipv6_traffic and is_ipv6: return
         if is_ipv6:
             if self.is_mac_os():
-                s = "-A inet6"
+                s = "-inet6"
             else:
                 s = "-6"
             if prefix is None: prefix = 128
@@ -946,7 +1000,7 @@ class _fdslight_client(dispatcher.dispatcher):
             return
 
         if self.is_mac_os():
-            cmd = "route %s add -net %s/%s -iface %s" % (s, host, prefix, self.__devname)
+            cmd = "route add %s -net %s/%s -iface %s >/dev/null" % (s, host, prefix, self.__devname)
         else:
             cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
@@ -970,7 +1024,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
         if is_ipv6:
             if self.is_mac_os():
-                s = "-A inet6"
+                s = "-inet6"
             else:
                 s = "-6"
             if not prefix: prefix = 128
@@ -979,7 +1033,7 @@ class _fdslight_client(dispatcher.dispatcher):
             if not prefix: prefix = 32
 
         if self.is_mac_os():
-            cmd = "route %s delete -net %s -iface" % (s, host, prefix, self.__devname)
+            cmd = "route delete %s -net %s -iface %s > /dev/null" % (s, host, prefix, self.__devname)
         else:
             cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
         os.system(cmd)
@@ -1012,7 +1066,7 @@ class _fdslight_client(dispatcher.dispatcher):
             os.system("rmmod fdslight_dgram")
             os.chdir("../")
         if self.__mode == _MODE_LOCAL:
-            self.__os_resolv.write_to_file(self.__os_resolv_backup)
+            if not self.is_mac_os(): self.__os_resolv.write_to_file(self.__os_resolv_backup)
 
         self.delete_handler(self.__tundev_fileno)
 

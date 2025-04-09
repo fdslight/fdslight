@@ -11,7 +11,7 @@
 
 #### **Linux启动停止**
 
-1. 先执行python3 fdsl_install.py \[python3_header_file_directory\]
+1. 先执行python3 fdsl_install.py \[CFLAGS\]
 2. 默认代理方式:sudo python3 fdsl_client.py -d debug | start | stop -m local -c  your_configure_directory_name_at_fdslight_directory
 3. 代理全部IPv6流量:sudo python3 fdsl_client.py -d debug | start | stop -m proxy_all_ipv6 -c  your_configure_directory_name_at_fdslight_directory
 4. 代理全部IPv4流量:sudo python3 fdsl_client.py -d debug | start | stop -m proxy_all_ipv4 -c  your_configure_directory_name_at_fdslight_directory

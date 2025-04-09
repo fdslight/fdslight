@@ -86,7 +86,7 @@ class tun_base(handler.handler):
                 break
             # mac os的tun设备前面4个字节为af地址族
             if self.is_mac_os():
-                af, _ = struct.unpack("!I", ip_packet[0:4])
+                af,= struct.unpack("!I", ip_packet[0:4])
                 if af not in (self.__af_inet_v, self.__af_inet6_v): continue
                 ip_packet = ip_packet[4:]
             self.__qos.add_to_queue(ip_packet)

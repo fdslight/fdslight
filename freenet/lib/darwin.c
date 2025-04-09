@@ -17,7 +17,7 @@
 int open_tun_socket (char *ifname,size_t ifname_len,int o_nonblock_flags) {
   struct sockaddr_ctl addr;
   struct ctl_info info;
-  socklen_t ifname_len = ifname_len;
+  socklen_t ifname_length = ifname_len;
   int fd = -1;
   int err = 0;
 
@@ -40,7 +40,7 @@ int open_tun_socket (char *ifname,size_t ifname_len,int o_nonblock_flags) {
   if (err != 0) goto on_error;
 
   // TODO: forward ifname (we just expect it to be utun0 for now...)
-  err = getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &ifname_len);
+  err = getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &ifname_length);
   if (err != 0) goto on_error;
 
   //printf("%s\r\n",ifname);
