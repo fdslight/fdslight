@@ -179,6 +179,12 @@ class _fdslight_client(dispatcher.dispatcher):
 
         return False
 
+    def flush_mac_os_dns(self):
+        cmds = [
+            "dscacheutil -flushcache", "killall -HUP mDNSResponder",
+        ]
+        for cmd in cmds: os.system(cmd)
+
     def auto_set_mac_os_dnsserver(self):
         local = self.__configs["local"]
         remote_dns = local['virtual_dns']
@@ -272,6 +278,8 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__tundev_fileno = self.create_handler(-1, tundev.tundevc, self.__devname)
 
         if self.is_mac_os():
+            # 刷新主机dns缓存,让流量走虚拟网卡驱动
+            self.flush_mac_os_dns()
             self.__cfg_mac_os_utun()
 
         public = configs["public"]
