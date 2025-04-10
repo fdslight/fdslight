@@ -265,9 +265,9 @@ class _fdslight_client(dispatcher.dispatcher):
 
         if len(self.__devname) < 4:
             raise OSError("illegal tun device name length,it must be 4")
-        if self.is_mac_os() and len(self.__devname) < 5:
-            raise OSError("illegal tun device name length,it must be 5")
-
+        if self.is_mac_os():
+            # mac os utun无法定义名字，创建一个长名字以便有足够的缓冲区让系统存放随机生成的utun名字
+            self.__devname="000000000000"
         if mode == "local":
             self.__mode = _MODE_LOCAL
             self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
