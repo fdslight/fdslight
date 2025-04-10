@@ -1072,10 +1072,12 @@ class _fdslight_client(dispatcher.dispatcher):
         """mac os网络设置恢复
         """
         nameservers = []
-        for k, v in self.__os_resolv_backup:
-            if not netutils.is_ipv6_address(v) and not netutils.is_ipv4_address(v): continue
-            nameservers.append(v)
-        self.auto_set_mac_os_dnsserver(nameservers)
+        #for k, v in self.__os_resolv_backup:
+        #    if not netutils.is_ipv6_address(v) and not netutils.is_ipv4_address(v): continue
+        #    nameservers.append(v)
+        #self.auto_set_mac_os_dnsserver(nameservers)
+        # 恢复成默认DNS
+        self.auto_set_mac_os_dnsserver(["\"Empty\""])
 
     def release(self):
         if self.handler_exists(self.__dns_fileno):
