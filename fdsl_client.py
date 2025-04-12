@@ -267,7 +267,7 @@ class _fdslight_client(dispatcher.dispatcher):
             raise OSError("illegal tun device name length,it must be 4")
         if self.is_mac_os():
             # mac os utun无法定义名字，创建一个长名字以便有足够的缓冲区让系统存放随机生成的utun名字
-            self.__devname="000000000000"
+            self.__devname = "000000000000"
         if mode == "local":
             self.__mode = _MODE_LOCAL
             self.__os_resolv_backup = self.__os_resolv.get_os_resolv()
@@ -305,6 +305,9 @@ class _fdslight_client(dispatcher.dispatcher):
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                     debug=debug,
                                                     enable_ipv6_dns_drop=enable_ipv6_dns_drop)
+
+        # 这个测试进程是否存在信号要在set_rules之前,避免set_rules过长导致网络恢复进程认为进程已退出
+        signal.signal(signal.SIGALRM, self.__sig_alarm)
 
         if self.__mode not in (_MODE_PROXY_ALL_IP4, _MODE_PROXY_ALL_IP6,):
             self.__set_rules(None, None)
@@ -370,6 +373,9 @@ class _fdslight_client(dispatcher.dispatcher):
         if tunnel_type == "udp" and server_host_from_nat:
             self.__open_tunnel()
         ''''''
+
+    def __sig_alarm(self, sig, frame):
+        pass
 
     def __cfg_os_net_forward(self):
         """配置操作系统转发环境
@@ -1072,10 +1078,10 @@ class _fdslight_client(dispatcher.dispatcher):
         """mac os网络设置恢复
         """
         nameservers = []
-        #for k, v in self.__os_resolv_backup:
+        # for k, v in self.__os_resolv_backup:
         #    if not netutils.is_ipv6_address(v) and not netutils.is_ipv4_address(v): continue
         #    nameservers.append(v)
-        #self.auto_set_mac_os_dnsserver(nameservers)
+        # self.auto_set_mac_os_dnsserver(nameservers)
         # 恢复成默认DNS
         self.auto_set_mac_os_dnsserver(["\"Empty\""])
 
@@ -1387,6 +1393,46 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__traffic_begin_time = now
 
 
+def __mac_os_net_backup(pid:int):
+    """mac os自动网络重置,因为强制关闭会导致网络无法恢复,所以需要检测进程是否存在
+    """
+    mypid = os.fork()
+    # 主进程直接返回
+    if mypid != 0: return
+
+    os.setsid()
+    os.umask(0)
+
+    while True:
+        time.sleep(10)
+        try:
+            os.kill(pid, signal.SIGALRM)
+        except:
+            # 进程不存在就退出
+            break
+        ''''''
+
+    services=[]
+    fd = os.popen("networksetup -listallnetworkservices")
+
+    for line in fd:
+        if line.find("disabled") >= 0: continue
+        line = line.strip()
+        line = line.replace("\r", "")
+        line = line.replace("\n", "")
+        line = line.replace(" ", "\\ ")
+        services.append(line)
+
+    fd.close()
+
+    for service in services:
+        cmd = "networksetup -setdnsservers %s \"Empty\"" % service
+        # print(cmd)
+        os.system(cmd)
+    # 退出监护进程
+    sys.exit(0)
+
+
 def __start_service(mode, debug, conf_dir):
     pid_file = "%s/fdslight.pid" % conf_dir
 
@@ -1404,6 +1450,10 @@ def __start_service(mode, debug, conf_dir):
 
         if pid != 0: sys.exit(0)
         proc.write_pid(pid_file)
+
+    if platform.system().lower() == "darwin":
+        __mac_os_net_backup(os.getpid())
+    ''''''
 
     cls = _fdslight_client()
 
