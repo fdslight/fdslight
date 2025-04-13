@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os, getopt, signal, importlib, socket, sys, time, json, zlib, platform
-from wsgiref.simple_server import server_version
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -1394,7 +1393,7 @@ class _fdslight_client(dispatcher.dispatcher):
 
 
 def __mac_os_net_backup(pid:int):
-    """mac os自动网络重置,因为强制关闭会导致网络无法恢复,所以需要检测进程是否存在
+    """mac os自动网络重置,因为关闭终端会导致网络无法恢复,所以需要检测进程是否存在
     """
     mypid = os.fork()
     # 主进程直接返回
