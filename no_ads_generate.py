@@ -2,7 +2,7 @@
 # 生成广告屏蔽版本的代理规则文件
 import os
 
-URL = "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt"
+URL = "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/refs/heads/master/anti-ad-domains.txt"
 
 # 核外加入的匹配规则
 EXTRA_ADDS = [
