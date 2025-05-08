@@ -183,6 +183,7 @@ int map_add(struct map *m,const char *key,void *data)
 
 	m->tree_root->refcnt+=1;
 	m->tree_root->tmp=NULL;
+	m->key_tot_num+=1;
 
 	node->is_data_node=1;
 	node->data=data;
@@ -252,6 +253,7 @@ void map_del(struct map *m,const char *key,map_del_func_t fn)
 	}
 	//DBG("%d\r\n",m->tree_root);
 	m->tree_root->refcnt-=1;
+	m->key_tot_num-=1;
 }
 
 void *map_find(struct map *m,const char *key,char *is_found)

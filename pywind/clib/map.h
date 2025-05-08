@@ -27,6 +27,8 @@ struct map{
 	struct map_node *empty_head;
 	unsigned int cur_alloc_num;
 	unsigned int pre_alloc_num;
+	// key的总体数量
+	unsigned int key_tot_num;
 	unsigned char length;
 };
 
