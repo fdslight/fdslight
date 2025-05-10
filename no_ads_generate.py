@@ -105,7 +105,7 @@ def gen_dns_rule(results):
 def main():
     fname = "anti-ad-domains.txt"
     if os.path.isfile(fname): os.remove(fname)
-    os.system("wget %s --no-check-certificate" % URL)
+    os.system("wget %s" % URL)
     results = parse(fname)
     # gen_proxy_rule(results)
     gen_dns_rule(results)
