@@ -362,7 +362,9 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         else:
             self.writer.write(sent_pkt)
 
-        if self.is_conn_ok(): self.add_evt_write(self.fileno)
+        if self.is_conn_ok():
+            self.add_evt_write(self.fileno)
+            self.send_now()
 
         self.__encrypt.reset()
 
