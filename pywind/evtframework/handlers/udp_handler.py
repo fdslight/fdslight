@@ -16,10 +16,10 @@ class udp_handler(handler.handler):
     def __init__(self):
         super(udp_handler, self).__init__()
         self.__timer = timer.timer()
+        self.__sent = []
 
     def connect(self, address):
         self.__is_connect = True
-        self.__sent = []
         self.socket.connect(address)
         self.__peer_address = self.socket.getpeername()
 
@@ -46,7 +46,6 @@ class udp_handler(handler.handler):
         return address
 
     def bind(self, address):
-        self.__sent = {}
         self.socket.bind(address)
 
     def getsockname(self):
@@ -70,17 +69,11 @@ class udp_handler(handler.handler):
         self.udp_delete()
 
     def sendto(self, byte_data, address, flags=0):
-        name = self.get_id(address)
-        if None == self.__sent: self.__sent = {}
-        if name not in self.__sent: self.__sent[name] = []
-
-        self.__sent[name].append((byte_data, flags, address,))
+        self.__sent.append((byte_data, address, flags))
         return True
 
     def send(self, byte_data):
         if not self.__is_connect: return False
-        if None == self.__sent: self.__sent = []
-
         self.__sent.append(byte_data)
 
         return True
@@ -115,10 +108,13 @@ class udp_handler(handler.handler):
             while 1:
                 if not self.__sent:
                     self.udp_writable()
-                    return
+                    break
                 byte_data = self.__sent.pop(0)
                 try:
                     sent_size = self.socket.send(byte_data)
+                except BlockingIOError:
+                    self.__sent.insert(0, byte_data)
+                    break
                 except ConnectionError:
                     self.error()
                     return
@@ -130,37 +126,27 @@ class udp_handler(handler.handler):
                     self.__sent.insert(0, byte_data)
                     return
                 continue
-            ''''''
+            return
         ''''''
-        del_names = []
-        for name in self.__sent:
-            data_queue = self.__sent[name]
+        while 1:
             try:
-                byte_data, flags, address = data_queue.pop(0)
+                byte_data, address, flags = self.__sent.pop(0)
             except IndexError:
                 break
             try:
-                sent_size = self.socket.sendto(byte_data, flags, address)
+                self.socket.sendto(byte_data, flags, address)
             except BlockingIOError:
+                self.__sent.insert(0, (byte_data, address, flags))
                 break
+            except OSError:
+                self.error()
+                return
             except FileNotFoundError:
                 self.error()
                 return
-            slice_data = byte_data[sent_size:]
-
-            if slice_data:
-                data_queue.insert(0, (slice_data, flags, address,))
-                break
-
-            if not data_queue:
-                del_names.append(name)
             ''''''
-        for name in del_names:
-            del self.__sent[name]
-
         if not self.__sent:
             self.udp_writable()
-
         return
 
     def udp_readable(self, message, address):
@@ -199,3 +185,6 @@ class udp_handler(handler.handler):
 
     def close(self):
         self.socket.close()
+
+    def send_now(self):
+        self.evt_write()

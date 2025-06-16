@@ -52,12 +52,12 @@ class udp_tunnel(udp_handler.udp_handler):
         self.add_evt_read(self.fileno)
 
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
+        self.create_tunnel()
 
         return self.fileno
 
     def create_tunnel(self):
-        server_ip = self.dispatcher.get_racs_server_ip(self.__address[0])
-
+        server_ip = self.dispatcher.get_racs_server_ip(self.__address[0],enable_ipv6=self.__is_ipv6)
         if not server_ip: return False
 
         self.__server_address = (server_ip, self.__address[1],)
@@ -129,6 +129,7 @@ class udp_tunnel(udp_handler.udp_handler):
 
         self.sendto(wrap_data, self.__server_address)
         self.add_evt_write(self.fileno)
+        self.send_now()
 
 
 class tcp_tunnel(tcp_handler.tcp_handler):
@@ -169,7 +170,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         self.__update_time = time.time()
         self.__header_ok = False
 
-        server_ip = self.dispatcher.get_racs_server_ip(self.__address[0],enable_ipv6=is_ipv6)
+        server_ip = self.dispatcher.get_racs_server_ip(self.__address[0], enable_ipv6=is_ipv6)
 
         if not server_ip:
             logging.print_general("DNS_NOT_FOUND", self.__address)
