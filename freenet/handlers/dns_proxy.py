@@ -607,3 +607,4 @@ class dot_client(tcp_handler.tcp_handler):
             return
         self.add_evt_write(self.fileno)
         self.writer.write(wrap_msg)
+        self.send_now()
