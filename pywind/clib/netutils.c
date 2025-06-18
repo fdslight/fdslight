@@ -212,7 +212,7 @@ int is_udplite,int udplite_csum_coverage)
     } *udphdr;
 
     // 限制数据包最大值以及最小值
-    if(user_data_len>65535 || user_data_len<1) return NULL;
+    if(user_data_len>=65535 || user_data_len<1) return NULL;
 
     src_port=htons(src_port);
     dst_port=htons(dst_port);

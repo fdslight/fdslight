@@ -374,7 +374,8 @@ static struct PyModuleDef utilsmodule = {
 	"fn_utils",
 	NULL,
 	-1,
-	UtilsMethods
+	UtilsMethods,
+	NULL,NULL,NULL,NULL
 };
 
 
