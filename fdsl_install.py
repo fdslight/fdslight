@@ -39,7 +39,7 @@ def get_python_cflags():
 
 
 def build_client(cflags, gw_mode=False):
-    cflags += " -O3 -Wall"
+    cflags += " -O3 -Wall -g"
     __build_fn_utils(cflags)
 
 
