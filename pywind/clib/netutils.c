@@ -355,6 +355,7 @@ void rewrite_ip6_addr(struct netutil_ip6hdr *ip6hdr,unsigned char *new_addr,int 
     unsigned short *old_u16addr,*new_u16addr=(unsigned short *)new_addr;
     unsigned char next_header=ip6hdr->next_header;
     struct netutil_ip6_frag_header *frag_header;
+    unsigned short frag_off=0;
 
     int flags=1;
     int x=40;
@@ -372,6 +373,11 @@ void rewrite_ip6_addr(struct netutil_ip6hdr *ip6hdr,unsigned char *new_addr,int 
     if(next_header==44){
         frag_header=(struct netutil_ip6_frag_header *)(((char *)ip6hdr)+40);
         next_header=frag_header->next_header;
+        frag_off=ntohs(frag_header->frag_off);
+        frag_off=(frag_off & 0xfff8)>>3;
+        // 只修改第一个包检验和
+        if(frag_off!=0) flags=0;
+
         x+=8;
     }
 
