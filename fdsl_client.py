@@ -65,6 +65,7 @@ class _fdslight_client(dispatcher.dispatcher):
     __enable_dot = False
     __dot_auth_host = None
     __dot_host = None
+    __dot_enable_ipv6 = None
 
     __dns_listen6 = -1
     __tundev_fileno = -1
@@ -296,6 +297,7 @@ class _fdslight_client(dispatcher.dispatcher):
         dot_auth_host = public.get("dot_auth_host", public["remote_dns"])
         self.__dot_auth_host = dot_auth_host
         self.__dot_host = public.get("dot_host", public["remote_dns"])
+        self.__dot_enable_ipv6 = bool(int(public.get("dot_enable_ipv6", "0")))
 
         if self.__enable_dot:
             self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
@@ -319,20 +321,20 @@ class _fdslight_client(dispatcher.dispatcher):
             self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
         else:
             local = configs["local"]
-            vir_dns = local["virtual_dns"]
-            vir_dns6 = local["virtual_dns6"]
+        vir_dns = local["virtual_dns"]
+        vir_dns6 = local["virtual_dns6"]
 
-            self.__local_dns = vir_dns
-            self.__local_dns6 = vir_dns6
+        self.__local_dns = vir_dns
+        self.__local_dns6 = vir_dns6
 
-            _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
+        _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
 
-            if not self.is_mac_os():
-                self.__os_resolv.write_to_file(_list)
-            else:
-                self.auto_set_mac_os_dnsserver()
-            self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
-            if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
+        if not self.is_mac_os():
+            self.__os_resolv.write_to_file(_list)
+        else:
+            self.auto_set_mac_os_dnsserver()
+        self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
+        if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
 
         conn = configs["connection"]
 
@@ -1132,6 +1134,11 @@ class _fdslight_client(dispatcher.dispatcher):
 
     def dot_open(self):
         is_ipv6 = netutils.is_ipv6_address(self.__dot_host)
+        is_ipv4 = netutils.is_ipv4_address(self.__dot_host)
+
+        if not is_ipv4 and not is_ipv6:
+            is_ipv6 = self.__dot_enable_ipv6
+
         self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
                                                 is_ipv6=is_ipv6, debug=self.__debug)
 
@@ -1392,7 +1399,7 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__traffic_begin_time = now
 
 
-def __mac_os_net_backup(pid:int):
+def __mac_os_net_backup(pid: int):
     """mac os自动网络重置,因为关闭终端会导致网络无法恢复,所以需要检测进程是否存在
     """
     mypid = os.fork()
@@ -1411,7 +1418,7 @@ def __mac_os_net_backup(pid:int):
             break
         ''''''
 
-    services=[]
+    services = []
     fd = os.popen("networksetup -listallnetworkservices")
 
     for line in fd:

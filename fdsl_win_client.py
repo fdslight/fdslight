@@ -45,6 +45,7 @@ class fdslight_client(dispatcher.dispatcher):
     __enable_dot = False
     __dot_auth_host = None
     __dot_host = None
+    __dot_enable_ipv6 = None
 
     __dns_listen6 = -1
     __session_id = None
@@ -190,6 +191,7 @@ class fdslight_client(dispatcher.dispatcher):
         dot_auth_host = public.get("dot_auth_host", public["dot_host"])
         self.__dot_auth_host = dot_auth_host
         self.__dot_host = public.get("dot_host", public["remote_dns"])
+        self.__dot_enable_ipv6 = bool(int(public.get("dot_enable_ipv6", "0")))
 
         if self.__enable_dot:
             self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
@@ -932,6 +934,11 @@ class fdslight_client(dispatcher.dispatcher):
 
     def dot_open(self):
         is_ipv6 = netutils.is_ipv6_address(self.__dot_host)
+        is_ipv4 = netutils.is_ipv4_address(self.__dot_host)
+
+        if not is_ipv4 and not is_ipv6:
+            is_ipv6 = self.__dot_enable_ipv6
+
         self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
                                                 is_ipv6=is_ipv6, debug=self.__debug)
 
