@@ -369,7 +369,9 @@ class dnsc_proxy(dns_base):
         self.remove_evt_write(self.fileno)
 
     def udp_error(self):
-        self.delete_handler(self.fileno)
+        # 因为是bind套接字,存在网络没有并且要发送数据情况,这种情况忽略,避免报错程序退出
+        #self.delete_handler(self.fileno)
+        pass
 
     def udp_delete(self):
         self.unregister(self.fileno)
