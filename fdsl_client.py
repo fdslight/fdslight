@@ -1446,6 +1446,13 @@ def __start_service(mode, debug, conf_dir):
         print("the fdsl_client process exists")
         return
 
+    if platform.system().lower() == "linux":
+        resolv_path = "/etc/resolv.conf"
+        if os.path.isfile(resolv_path) and not os.access(resolv_path, os.W_OK):
+            print("ERROR:%s read only,it must be writable and readable")
+            return
+        ''''''
+
     if not debug:
         pid = os.fork()
         if pid != 0: sys.exit(0)
