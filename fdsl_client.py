@@ -1447,6 +1447,7 @@ def __start_service(mode, debug, conf_dir):
         return
 
     if platform.system().lower() == "linux":
+        os.system("systemctl stop systemd-resolved")
         resolv_path = "/etc/resolv.conf"
         if os.path.isfile(resolv_path) and not os.access(resolv_path, os.W_OK):
             print("ERROR:%s read only,it must be writable and readable")
