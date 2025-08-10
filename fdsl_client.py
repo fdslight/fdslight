@@ -1452,7 +1452,6 @@ def __start_service(mode, debug, conf_dir):
             print("ERROR:%s read only,it must be writable and readable")
             return
         ''''''
-
     if not debug:
         pid = os.fork()
         if pid != 0: sys.exit(0)
