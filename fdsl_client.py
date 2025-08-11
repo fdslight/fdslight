@@ -299,9 +299,14 @@ class _fdslight_client(dispatcher.dispatcher):
         self.__dot_host = public.get("dot_host", public["remote_dns"])
         self.__dot_enable_ipv6 = bool(int(public.get("dot_enable_ipv6", "0")))
 
+        if netutils.is_ipv6_address(self.__dot_host):
+            self.__dot_enable_ipv6 = True
+        if netutils.is_ipv4_address(self.__dot_host):
+            self.__dot_enable_ipv6 = False
+
         if self.__enable_dot:
             self.__dot_fileno = self.create_handler(-1, dns_proxy.dot_client, self.__dot_host, self.__dot_auth_host,
-                                                    is_ipv6=netutils.is_ipv6_address(self.__dot_host), debug=self.debug)
+                                                    is_ipv6=self.__dot_enable_ipv6, debug=self.debug)
         if self.__mode == _MODE_LOCAL:
             self.__dns_fileno = self.create_handler(-1, dns_proxy.dnsc_proxy, public["remote_dns"], is_ipv6=is_ipv6,
                                                     debug=debug,
@@ -1279,7 +1284,7 @@ class _fdslight_client(dispatcher.dispatcher):
     def racs_configs(self):
         return self.__racs_cfg
 
-    def get_racs_server_ip(self, host, enable_ipv6=False):
+    def get_server_ip2(self, host, enable_ipv6=False):
         if utils.is_ipv4_address(host): return host
         if utils.is_ipv6_address(host): return host
 

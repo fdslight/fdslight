@@ -421,7 +421,7 @@ class dot_client(tcp_handler.tcp_handler):
         self.set_socket(s)
         self.__conn_timeout = conn_timeout
 
-        server_ip = self.dispatcher.get_server_ip(host)
+        server_ip = self.dispatcher.get_server_ip2(host,enable_ipv6=is_ipv6)
         if server_ip is None:
             logging.print_error("cannot get %s ip address" % host)
             s.close()
