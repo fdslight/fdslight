@@ -45,7 +45,7 @@ def build_client(cflags, gw_mode=False):
 
 def main():
     help_doc = """
-    [python3_include]
+    [CFLAGS]
     """
 
     argv = sys.argv[1:]
