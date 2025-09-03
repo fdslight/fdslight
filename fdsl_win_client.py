@@ -97,6 +97,9 @@ class fdslight_client(dispatcher.dispatcher):
     # 最近接收数据的时间
     __last_data_time = None
 
+    # 最近检查系统网卡时间
+    __last_chk_os_nic_time = None
+
     __file_key = None
 
     @property
@@ -144,6 +147,7 @@ class fdslight_client(dispatcher.dispatcher):
     def init_func(self, conf_dir, file_key: str):
         self.__file_key = file_key
         self.__last_data_time = time.time()
+        self.__last_chk_os_nic_time = time.time()
         # 首先清理一次注册表,非法关闭时注册表不会清空
         self.__clear_winreg()
         self.__debug = True
@@ -252,6 +256,7 @@ class fdslight_client(dispatcher.dispatcher):
             self.__open_tunnel()
 
         self.__cfg_os_net_forward()
+        self.auto_modify_os_dns(onstart=True)
 
     def load_driver(self):
         machine = platform.machine().lower()
@@ -762,6 +767,21 @@ class fdslight_client(dispatcher.dispatcher):
     def debug(self):
         return self.__debug
 
+    def auto_modify_os_dns(self, onstart=False):
+        """自动修改操作系统DNS,避免网络变化导致DNS解析出错和DNS泄露
+        """
+        now = time.time()
+        if now - self.__last_chk_os_nic_time < 60 and not onstart: return
+        self.__last_chk_os_nic_time = time.time()
+        # DNS未发生变化不修正
+        if not self.__wintun.is_chaned_for_nic_dnsserver(): return
+        if self.debug and not onstart:
+            print("NOTE:OS network changed,modify other nic dns for fdslight")
+
+        # 使用loopback地址禁止DNS发送除去
+        self.__wintun.set_nic_dns_and_not_self("127.0.0.1", is_ipv6=False)
+        self.__wintun.set_nic_dns_and_not_self("::1", is_ipv6=True)
+
     def myloop(self):
         now = time.time()
         if self.__wintun.readable():
@@ -788,6 +808,7 @@ class fdslight_client(dispatcher.dispatcher):
         # 改成按需连接,避免空连接增加服务器压力被限制连接
         # if self.enable_dot and self.dot_fd < 0:
         #    self.dot_open()
+        self.auto_modify_os_dns()
 
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
@@ -887,7 +908,6 @@ class fdslight_client(dispatcher.dispatcher):
         path = r'SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
         reg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
 
-
     def __clear_winreg(self):
         """清除注册表相关适配器信息,避免适配器在注册表一直增多
         """
@@ -923,6 +943,9 @@ class fdslight_client(dispatcher.dispatcher):
         self.__wintun.close_adapter()
         self.__wintun.delete_driver()
         self.__clear_winreg()
+        # 清除设置的DNS,如果原先网卡是静态DNS那么无法恢复
+        self.__wintun.set_nic_dns_and_not_self(is_ipv6=False)
+        self.__wintun.set_nic_dns_and_not_self(is_ipv6=True)
 
     @property
     def ca_path(self):
@@ -1147,8 +1170,10 @@ def __start_service(conf_dir, sec_key):
         cls.ioloop(conf_dir, sec_key)
     except KeyboardInterrupt:
         cls.release()
+    except:
+        logging.print_error()
+        cls.release()
     ''''''
-
 
 def __is_admin():
     rs = ctypes.windll.shell32.IsUserAnAdmin()
@@ -1179,6 +1204,8 @@ def main():
         return
 
     print("NOTE:use configure directory %s" % c)
+    print()
+    print("Important!!! If you want to exit program,you should press Ctrl+C")
     print()
     print("**-----------INPUT SOFTWARE CONFIGURE SECURITY KEY----------------**")
     # 载入配置文件密钥

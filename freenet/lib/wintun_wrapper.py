@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import ctypes, os
+import ctypes, os, hashlib
 import ctypes.wintypes as wintypes
 import pywind.lib.netutils as netutils
 
@@ -14,8 +14,11 @@ class Wintun(object):
     __my_ipv6 = None
     __if_idx = None
     __ignore_cmd_output = None
+    __os_nic_md5 = None
 
     def __init__(self, dll_path: str, ignore_cmd_output=False):
+        self.__os_nic_md5 = b""
+        self.__nic_name = "fdslight"
         self.__ignore_cmd_output = ignore_cmd_output
         self.__wintun = ctypes.CDLL(dll_path)
 
@@ -182,7 +185,139 @@ class Wintun(object):
             cmd = "route delete %s mask %s if %s" % (network, mask, self.__if_idx)
         self.__exe_cmd(cmd)
 
-# wintun = Wintun("bin/amd64/wintun.dll")
+    def __get_all_nic_without_self(self, self_name: str):
+        fdst = os.popen("netsh int ipv4 show interfaces")
+        s = fdst.buffer.read().decode("utf-8")
+        fdst.close()
+        _list = s.split("\n")
+        _list2 = []
+
+        for s in _list:
+            s = s.replace("\r", "")
+            if not s: continue
+            _list2.append(s)
+
+        if len(_list2) <= 2: return []
+        _list2 = _list2[2:]
+        results = []
+        for line in _list2:
+            line = line.strip()
+            p = line.find(" ")
+            idx = line[0:p]
+            p = p + 1
+            line = line[p:].strip()
+            p = line.find(" ")
+            metric = line[0:p]
+            p = p + 1
+            line = line[p:].strip()
+            p = line.find(" ")
+            mtu = line[0:p]
+            p = p + 1
+            line = line[p:].strip()
+            p = line.find(" ")
+            status = line[0:p]
+            name = line[p:].strip()
+
+            if name.lower().find("loopback") >= 0: continue
+            if name.lower().find("vethernet") >= 0: continue
+            if name.lower().find("vmware") >= 0: continue
+            if name.lower().find(self_name) >= 0: continue
+            results.append((int(idx), int(metric), int(mtu), status, name))
+
+        return results
+
+    def __parse_show_dns_cmd(self, s: str):
+        """解析show DNS命令
+        """
+        # print(s)
+        nameservers = []
+        s = s.strip()
+        _list = s.split("\n")
+        _list2 = []
+        for line in _list:
+            line = line.replace("\r", "").strip()
+            if not line: continue
+            _list2.append(line)
+
+        # if len(_list2) > 3:
+        #    nameservers.append(_list2[2])
+        s = _list2[1]
+        p = s.find(":")
+        p += 1
+        s = s[p:].strip()
+        if netutils.is_ipv4_address(s) or netutils.is_ipv6_address(s):
+            nameservers.append(s)
+        if len(_list2) == 4:
+            nameservers.append(_list2[2])
+
+        return nameservers
+
+    def get_nic_nameservers(self, nic_name: str, is_ipv6=False):
+        if not is_ipv6:
+            fdst = os.popen("netsh interface ipv4 show dns \"%s\"" % nic_name)
+        else:
+            fdst = os.popen("netsh interface ipv6 show dns \"%s\"" % nic_name)
+        s = fdst.buffer.read().decode("utf-8")
+        fdst.close()
+        nameservers = self.__parse_show_dns_cmd(s)
+
+        return nameservers
+
+    def set_nic_dns_and_not_self(self, dnsserver=None, is_ipv6=False):
+        """自动设置除自身之外的其他网卡DNS
+        """
+        # 修改所有网卡为VPN的DNS,避免泄露DNS
+        nics = self.__get_all_nic_without_self(self.__nic_name)
+        cmds = []
+        for nic in nics:
+            if nic[3] != "connected": continue
+            nameservers = self.get_nic_nameservers(nic[4], is_ipv6=False)
+            if not nameservers: continue
+            # print(nameservers)
+            # 网卡存在DNS的,那么清除DNS
+            if is_ipv6:
+                cmd = """netsh interface ipv6 delete dnsservers "%s" all""" % (nic[4])
+                cmds.append(cmd)
+                if dnsserver:
+                    cmds.append(
+                        "netsh interface ipv6 set dnsservers \"%s\" static %s primary validate=no" % (nic[4],
+                                                                                                      dnsserver))
+                    ''''''
+                ''''''
+            else:
+                cmd = """netsh interface ipv4 delete dnsservers "%s" all""" % (nic[4])
+                cmds.append(cmd)
+                if dnsserver: cmds.append(
+                    "netsh interface ipv4 set dns \"%s\" static %s primary validate=no" % (nic[4], dnsserver))
+                ''''''
+            ''''''
+        for cmd in cmds: self.__exe_cmd(cmd)
+
+    def is_chaned_for_nic_dnsserver(self):
+        """检查系统网卡是否发生改变
+        """
+        nics = self.__get_all_nic_without_self(self.__nic_name)
+        nameservers = []
+        for nic in nics:
+            nameservers_a = self.get_nic_nameservers(nic[4], is_ipv6=False)
+            nameservers_b = self.get_nic_nameservers(nic[4], is_ipv6=True)
+            if nameservers_a:
+                nameservers += nameservers_a
+            if nameservers_b:
+                nameservers += nameservers_b
+            ''''''
+        s = "".join(nameservers)
+        md5 = hashlib.md5()
+        md5.update(s.encode("utf-8"))
+        v = md5.digest()
+        if v != self.__os_nic_md5:
+            self.__os_nic_md5 = v
+            return True
+        return False
+
+
+# get_all_nic_without_self("fdslight")
+#wintun = Wintun("../../drivers/wintun/amd64/wintun.dll")
 # wintun.create_adapater("fdslight", "fdslight")
 # wintun.start_session()
 # wintun.set_ip("10.1.1.1", 0, dnsserver="223.5.5.5")
@@ -191,3 +326,4 @@ class Wintun(object):
 #    if rs:
 #        wintun.write(rs)
 #    wintun.wait_read_event(10000)
+#wintun.set_nic_dns_and_not_self()
