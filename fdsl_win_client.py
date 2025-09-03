@@ -778,7 +778,7 @@ class fdslight_client(dispatcher.dispatcher):
         if self.debug and not onstart:
             print("NOTE:OS network changed,modify other nic dns for fdslight")
 
-        # 使用loopback地址禁止DNS发送除去
+        # 使用loopback地址禁止DNS发送出去
         self.__wintun.set_nic_dns_and_not_self("127.0.0.1", is_ipv6=False)
         self.__wintun.set_nic_dns_and_not_self("::1", is_ipv6=True)
 
