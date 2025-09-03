@@ -785,8 +785,9 @@ class fdslight_client(dispatcher.dispatcher):
         names = self.__route_timer.get_timeout_names()
         for name in names: self.__del_route(name)
 
-        if self.enable_dot and self.dot_fd < 0:
-            self.dot_open()
+        # 改成按需连接,避免空连接增加服务器压力被限制连接
+        #if self.enable_dot and self.dot_fd < 0:
+        #    self.dot_open()
 
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()

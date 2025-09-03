@@ -981,9 +981,9 @@ class _fdslight_client(dispatcher.dispatcher):
             self.flush_traffic_statistics()
             self.reset_traffic()
             self.__traffic_up_time = t
-
-        if self.enable_dot and self.dot_fd < 0:
-            self.dot_open()
+        # 改成按需连接,避免空连接增加服务器压力被限制连接
+        #if self.enable_dot and self.dot_fd < 0:
+        #    self.dot_open()
 
         if self.__racs_cfg["connection"]["enable"]:
             self.racs_reset()
