@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 配置加密工具
+# 配置加解密工具
 import os, sys, getpass
 
 BASE_DIR = os.path.dirname(sys.argv[0])
