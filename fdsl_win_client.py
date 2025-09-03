@@ -786,7 +786,7 @@ class fdslight_client(dispatcher.dispatcher):
         for name in names: self.__del_route(name)
 
         # 改成按需连接,避免空连接增加服务器压力被限制连接
-        #if self.enable_dot and self.dot_fd < 0:
+        # if self.enable_dot and self.dot_fd < 0:
         #    self.dot_open()
 
         if self.__racs_cfg["connection"]["enable"]:
@@ -881,6 +881,12 @@ class fdslight_client(dispatcher.dispatcher):
             network, prefix, is_ipv6 = self.__static_routes[k]
             self.__wintun.delete_route(network, prefix, is_ipv6=is_ipv6)
         ''''''
+
+    def __disable_win_multi_dns(self):
+        """禁用windows多宿主DNS解析,防止DNS解析泄漏"""
+        path = r'SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+        reg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
+
 
     def __clear_winreg(self):
         """清除注册表相关适配器信息,避免适配器在注册表一直增多
