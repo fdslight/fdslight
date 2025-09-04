@@ -937,15 +937,17 @@ class fdslight_client(dispatcher.dispatcher):
         if self.handler_exists(self.__dns_fileno):
             self.delete_handler(self.__dns_fileno)
 
-        self.__clear_routes()
+        # 先清除设置的DNS,如果原先网卡是静态DNS那么无法恢复,这里要在清理路由之前
+        # 避免因为路由过多删除时间过长人工强制退出导致网络无法恢复
+        self.__wintun.set_nic_dns_and_not_self(is_ipv6=False)
+        self.__wintun.set_nic_dns_and_not_self(is_ipv6=True)
 
+        self.__clear_routes()
         self.__wintun.end_session()
         self.__wintun.close_adapter()
         self.__wintun.delete_driver()
         self.__clear_winreg()
-        # 清除设置的DNS,如果原先网卡是静态DNS那么无法恢复
-        self.__wintun.set_nic_dns_and_not_self(is_ipv6=False)
-        self.__wintun.set_nic_dns_and_not_self(is_ipv6=True)
+
 
     @property
     def ca_path(self):
