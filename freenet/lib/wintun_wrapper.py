@@ -187,7 +187,11 @@ class Wintun(object):
 
     def __get_all_nic_without_self(self, self_name: str):
         fdst = os.popen("netsh int ipv4 show interfaces")
-        s = fdst.buffer.read().decode("utf-8")
+        bf = fdst.buffer.read()
+        try:
+            s = bf.decode("utf-8")
+        except UnicodeDecodeError:
+            s = bf.decode("gbk")
         fdst.close()
         _list = s.split("\n")
         _list2 = []
@@ -257,7 +261,11 @@ class Wintun(object):
             fdst = os.popen("netsh interface ipv4 show dns \"%s\"" % nic_name)
         else:
             fdst = os.popen("netsh interface ipv6 show dns \"%s\"" % nic_name)
-        s = fdst.buffer.read().decode("utf-8")
+        bf = fdst.buffer.read()
+        try:
+            s = bf.decode("utf-8")
+        except UnicodeDecodeError:
+            s = bf.decode("gbk")
         fdst.close()
         nameservers = self.__parse_show_dns_cmd(s)
 
@@ -315,9 +323,8 @@ class Wintun(object):
             return True
         return False
 
-
 # get_all_nic_without_self("fdslight")
-#wintun = Wintun("../../drivers/wintun/amd64/wintun.dll")
+# wintun = Wintun("../../drivers/wintun/amd64/wintun.dll")
 # wintun.create_adapater("fdslight", "fdslight")
 # wintun.start_session()
 # wintun.set_ip("10.1.1.1", 0, dnsserver="223.5.5.5")
@@ -326,4 +333,4 @@ class Wintun(object):
 #    if rs:
 #        wintun.write(rs)
 #    wintun.wait_read_event(10000)
-#wintun.set_nic_dns_and_not_self()
+# wintun.set_nic_dns_and_not_self()
