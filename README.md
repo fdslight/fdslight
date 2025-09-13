@@ -22,8 +22,10 @@
 3. 修改配置文件后执行python fdsl_conf_cipher.py encrypt进行配置文件加密(Linux系统不需要配置文件加解密)
 4. 如果需要重新修改配置文件,请执行python fdsl_conf_cipher.py decrypt进行解密,修改完毕后再执行加密脚本
 4. 复制fdslight-sample.bat脚本为自己的脚本名,例如fdslight-win.bat,并修改里面的配置目录
-5. 双击fdslight-win.bat启动,并按照提示输入配置文件解密密钥
+5. 复制fdsl-winnet-reset-sample.bat为自己的脚本名,例如fdsl-winnet-reset.bat，修改里面python的路径（用于重置DNS使用）
+6. 双击fdslight-win.bat启动,并按照提示输入配置文件解密密钥
 
 #### **注意事项**
 
 1. 网络改变时可能会导致程序退出，比如网线插拔，当网络改变时可能需要重启程序
+2. windows由于多路径DNS默认开启，且无法关闭，系统会重写所有网卡DNS，故需要一直开着代理软件，如果需要关闭可以上网，需要执行fdsl-winnet-reset.bat脚本
