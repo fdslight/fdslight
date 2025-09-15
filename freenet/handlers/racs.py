@@ -251,8 +251,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
         while 1:
             if not self.__header_ok:
                 self.parse_header()
-            if not self.__header_ok:
-                break
+            if not self.__header_ok: break
             if self.reader.size() < self.__payload_len: break
             try:
                 priv_key, msg = self.__decrypt.unwrap_tcp_body(self.reader.read(self.__payload_len), self.__crc32)
