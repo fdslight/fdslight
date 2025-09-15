@@ -266,7 +266,7 @@ class tcp_tunnel(tcp_handler.tcp_handler):
                 self.delete_handler(self.fileno)
                 return
             self.__update_time = time.time()
-            if not msg: return
+            if not msg: break
             self.dispatcher.send_to_local(msg)
         ''''''
 
