@@ -1556,7 +1556,7 @@ def main():
         if k == "-m": m = v
         if k == "-d": d = v
         if k == "-c": c = v
-        if k == "--kept-os-resolv": keep_os_resolv = True
+        if k == "--keep-os-resolv": keep_os_resolv = True
 
     if not d and not m and not u:
         print(help_doc)
