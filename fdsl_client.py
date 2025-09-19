@@ -1449,7 +1449,7 @@ def __mac_os_net_backup(pid: int):
     sys.exit(0)
 
 
-def __start_service(mode, debug, conf_dir):
+def __start_service(mode, debug, conf_dir,keep_os_resolv=False):
     pid_file = "%s/fdslight.pid" % conf_dir
 
     if not debug and os.path.isfile(pid_file):
@@ -1482,12 +1482,12 @@ def __start_service(mode, debug, conf_dir):
 
     if debug:
         try:
-            cls.ioloop(mode, debug, conf_dir)
+            cls.ioloop(mode, debug, conf_dir,keep_os_resolv=keep_os_resolv)
         except KeyboardInterrupt:
             cls.release()
         return
     try:
-        cls.ioloop(mode, debug, conf_dir)
+        cls.ioloop(mode, debug, conf_dir,keep_os_resolv=keep_os_resolv)
     except KeyboardInterrupt:
         cls.release()
     except:
