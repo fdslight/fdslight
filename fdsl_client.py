@@ -130,6 +130,8 @@ class _fdslight_client(dispatcher.dispatcher):
     __local_ip_prefix = None
     __local_ip6_prefix = None
 
+    __keep_os_resolv_flags = None
+
     @property
     def https_configs(self):
         configs = self.__configs.get("tunnel_over_https", {})
@@ -216,12 +218,13 @@ class _fdslight_client(dispatcher.dispatcher):
     def set_tun_devname(self, devname: str):
         self.__devname = devname
 
-    def init_func(self, mode, debug, conf_dir):
+    def init_func(self, mode, debug, conf_dir, keep_os_resolv=False):
         config_path = "%s/fn_client.ini" % conf_dir
         self.__conf_dir = conf_dir
         configs = configfile.ini_parse_from_file(config_path)
         self.__log_file = "%s/fdslight.log" % conf_dir
         self.__err_file = "%s/error.log" % conf_dir
+        self.__keep_os_resolv_flags = keep_os_resolv
 
         self.create_poll()
 
@@ -335,7 +338,7 @@ class _fdslight_client(dispatcher.dispatcher):
         _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
 
         if not self.is_mac_os():
-            self.__os_resolv.write_to_file(_list)
+            if not self.__keep_os_resolv_flags: self.__os_resolv.write_to_file(_list)
         else:
             self.auto_set_mac_os_dnsserver()
         self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
@@ -946,6 +949,8 @@ class _fdslight_client(dispatcher.dispatcher):
         """
         # 只允许local模式
         if self.__mode != _MODE_LOCAL: return
+        # 如果不修改操作系统dns文件,直接返回
+        if self.__keep_os_resolv_flags: return
         now = time.time()
         # 一分钟检查一次
         if now - self.__os_resolv_time < 60: return
@@ -982,7 +987,7 @@ class _fdslight_client(dispatcher.dispatcher):
             self.reset_traffic()
             self.__traffic_up_time = t
         # 改成按需连接,避免空连接增加服务器压力被限制连接
-        #if self.enable_dot and self.dot_fd < 0:
+        # if self.enable_dot and self.dot_fd < 0:
         #    self.dot_open()
 
         if self.__racs_cfg["connection"]["enable"]:
@@ -1102,7 +1107,7 @@ class _fdslight_client(dispatcher.dispatcher):
             os.chdir("../")
         if self.__mode == _MODE_LOCAL:
             if not self.is_mac_os():
-                self.__os_resolv.write_to_file(self.__os_resolv_backup)
+                if not self.__keep_os_resolv_flags: self.__os_resolv.write_to_file(self.__os_resolv_backup)
             else:
                 self.mac_os_network_backup()
             ''''''
@@ -1533,9 +1538,10 @@ def main():
     -m      local | proxy_all_ipv4 | proxy_all_ipv6 
     -u      rules | reset_traffic    update host and ip rules or reset traffic
     -c      set config directory,default is fdslight_etc
+    --keep-os-resolv   do not modify system /etc/resolv.conf,only support local mode
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:c:", [])
+        opts, args = getopt.getopt(sys.argv[1:], "u:m:d:c:", ["keep-os-resolv"])
     except getopt.GetoptError:
         print(help_doc)
         return
@@ -1543,12 +1549,14 @@ def main():
     m = ""
     u = ""
     c = ""
+    keep_os_resolv = False
 
     for k, v in opts:
         if k == "-u": u = v
         if k == "-m": m = v
         if k == "-d": d = v
         if k == "-c": c = v
+        if k == "--kept-os-resolv": keep_os_resolv = True
 
     if not d and not m and not u:
         print(help_doc)
@@ -1584,18 +1592,23 @@ def main():
     if m not in ("local", "proxy_all_ipv4", "proxy_all_ipv6",):
         print(help_doc)
         return
+    if m != "local" and keep_os_resolv:
+        print("ERROR:only local mode support keep-os-resolv")
+        return
 
     if platform.system().lower().startswith("darwin"):
+        # 苹果系统禁用支持
+        keep_os_resolv = False
         if m != "local":
             print("ERROR:mac os only support local mode")
             return
         ''''''
-
     if d in ("start", "debug",):
         debug = False
         if d == "debug": debug = True
-        __start_service(m, debug, c)
+        __start_service(m, debug, c, keep_os_resolv=keep_os_resolv)
         return
+    ''''''
 
 
 if __name__ == '__main__': main()
