@@ -14,7 +14,7 @@ if %errorlevel%==0 ( rd "%SystemRoot%\system32\%uac%" >nul 2>nul ) else (
 endlocal
 
 cd /d %~dp0
-% .\\disableX_win.exe
+% .\\disableX_win.exe %
 
 % test_conf 为你在fdslight目录下的配置文件目录,请根据脚本修改为你自己的实际目录 %
 python fdsl_win_client.py test_conf
