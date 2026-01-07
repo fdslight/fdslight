@@ -1218,6 +1218,10 @@ def main():
         print("ERROR:configure file security key is empty")
         return
 
+    # 禁止程序后台之后休眠
+    kernel32=ctypes.windll.kernel32
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-10),128)
+
     __start_service(c, sec_key)
 
 
