@@ -343,6 +343,7 @@ login.oracle.com:1
 *.yanjinggongju.com:1
 *.bible:1
 *.zanmei.ai:1
+*.preachchrist.com:1
 
 # tw相关
 *.tw:1
