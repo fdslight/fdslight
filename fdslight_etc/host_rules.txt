@@ -291,6 +291,7 @@ security.debian.org:1
 *.hostloc.com:1
 *.fwupd.org:1
 geolocation.onetrust.com:1
+*.teacherspayteachers.com:1
 
 ### 书籍文化
 *.pressstore.com.tw:1
