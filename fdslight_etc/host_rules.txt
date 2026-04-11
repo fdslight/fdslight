@@ -65,6 +65,7 @@ copilot.microsoft.com:1
 *.twitter.com:1
 *.twimg.com:1
 *.t.co:1
+*.x.com:1
 *.instagram.com:1
 *.cdninstagram.com:1
 *.xing.com:1
