@@ -294,6 +294,8 @@ security.debian.org:1
 *.fwupd.org:1
 geolocation.onetrust.com:1
 *.teacherspayteachers.com:1
+*.nodeseek.com:1
+*.linux.do:1
 
 ### 书籍文化
 *.pressstore.com.tw:1
