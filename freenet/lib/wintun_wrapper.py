@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import ctypes, os, hashlib
+import ctypes, os, hashlib, subprocess
 import ctypes.wintypes as wintypes
 import pywind.lib.netutils as netutils
 
@@ -24,18 +24,17 @@ class Wintun(object):
 
     def __exe_cmd(self, cmd):
         if not self.__ignore_cmd_output:
-            os.system(cmd)
+            subprocess.call(cmd, shell=True)
             return
         cmd += " 2>nul"
-        fd = os.popen(cmd)
-        fd.close()
+        subprocess.call(cmd, shell=True)
 
     def __set_if_idx(self):
         # 获取接口索引
         cmd = "netsh int ipv4 show interfaces | findstr %s" % self.__nic_name
-        fdst = os.popen(cmd)
-        s = fdst.read()
-        fdst.close()
+
+        rs = subprocess.run(cmd, capture_output=True, shell=True)
+        s = rs.stdout.decode()
         s = s.replace("\r", "")
         s = s.replace("\n", "")
         _list = s.split(" ")
@@ -186,13 +185,12 @@ class Wintun(object):
         self.__exe_cmd(cmd)
 
     def __get_all_nic_without_self(self, self_name: str):
-        fdst = os.popen("netsh int ipv4 show interfaces")
-        bf = fdst.buffer.read()
+        rs = subprocess.run("netsh int ipv4 show interfaces", capture_output=True, shell=True)
+        bf = rs.stdout
         try:
             s = bf.decode("utf-8")
         except UnicodeDecodeError:
             s = bf.decode("gbk")
-        fdst.close()
         _list = s.split("\n")
         _list2 = []
 
@@ -258,15 +256,14 @@ class Wintun(object):
 
     def get_nic_nameservers(self, nic_name: str, is_ipv6=False):
         if not is_ipv6:
-            fdst = os.popen("netsh interface ipv4 show dns \"%s\"" % nic_name)
+            rs = subprocess.run("netsh interface ipv4 show dns \"%s\"" % nic_name, capture_output=True, shell=True)
         else:
-            fdst = os.popen("netsh interface ipv6 show dns \"%s\"" % nic_name)
-        bf = fdst.buffer.read()
+            rs = subprocess.run("netsh interface ipv6 show dns \"%s\"" % nic_name, capture_output=True, shell=True)
+        bf = rs.stdout
         try:
             s = bf.decode("utf-8")
         except UnicodeDecodeError:
             s = bf.decode("gbk")
-        fdst.close()
         nameservers = self.__parse_show_dns_cmd(s)
 
         return nameservers

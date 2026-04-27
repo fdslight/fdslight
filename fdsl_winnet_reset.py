@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # 重置windows系统网络脚本,主程序非正常退出时使用
 
-import sys,os
+import sys, os, subprocess
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -9,13 +9,12 @@ import pywind.lib.netutils as netutils
 
 
 def get_all_nic():
-    fdst = os.popen("netsh int ipv4 show interfaces")
-    bf = fdst.buffer.read()
+    rs = subprocess.run("netsh int ipv4 show interfaces", capture_output=True, shell=True)
+    bf = rs.stdout
     try:
         s = bf.decode("utf-8")
     except UnicodeDecodeError:
         s = bf.decode("gbk")
-    fdst.close()
     _list = s.split("\n")
     _list2 = []
 
@@ -52,6 +51,7 @@ def get_all_nic():
 
     return results
 
+
 def parse_show_dns_cmd(s: str):
     """解析show DNS命令
     """
@@ -78,20 +78,23 @@ def parse_show_dns_cmd(s: str):
 
     return nameservers
 
+
 def get_nic_nameservers(nic_name: str, is_ipv6=False):
     if not is_ipv6:
-        fdst = os.popen("netsh interface ipv4 show dns \"%s\"" % nic_name)
+        cmd = "netsh interface ipv4 show dns \"%s\"" % nic_name
     else:
-        fdst = os.popen("netsh interface ipv6 show dns \"%s\"" % nic_name)
-    bf = fdst.buffer.read()
+        cmd = "netsh interface ipv6 show dns \"%s\"" % nic_name
+
+    rs = subprocess.run(cmd, capture_output=True, shell=True)
+    bf = rs.stdout
     try:
         s = bf.decode("utf-8")
     except UnicodeDecodeError:
         s = bf.decode("gbk")
-    fdst.close()
     nameservers = parse_show_dns_cmd(s)
 
     return nameservers
+
 
 def reset_nic_dns(is_ipv6=False):
     """自动设置除自身之外的其他网卡DNS
@@ -112,12 +115,13 @@ def reset_nic_dns(is_ipv6=False):
             cmd = """netsh interface ipv4 delete dnsservers "%s" all""" % (nic[4])
             cmds.append(cmd)
         ''''''
-    for cmd in cmds: os.system(cmd+" >nul 2>nul")
+    for cmd in cmds: subprocess.call(cmd + " >nul 2>nul", shell=True)
+
 
 def main():
     reset_nic_dns(is_ipv6=False)
     reset_nic_dns(is_ipv6=True)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

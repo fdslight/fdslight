@@ -197,17 +197,15 @@ class _fdslight_client(dispatcher.dispatcher):
             ]
         services = []
 
-        fd = os.popen("networksetup -listallnetworkservices")
-
-        for line in fd:
+        rs = subprocess.run("networksetup -listallnetworkservices", capture_output=True, shell=True)
+        dns_list = rs.stdout.decode().split("\n")
+        for line in dns_list:
             if line.find("disabled") >= 0: continue
             line = line.strip()
             line = line.replace("\r", "")
             line = line.replace("\n", "")
             line = line.replace(" ", "\\ ")
             services.append(line)
-
-        fd.close()
 
         for service in services:
             cmd = "networksetup -setdnsservers %s %s" % (service, " ".join(servers))
@@ -1424,17 +1422,16 @@ def __mac_os_net_backup(pid: int):
         ''''''
 
     services = []
-    fd = os.popen("networksetup -listallnetworkservices")
+    rs = subprocess.run("networksetup -listallnetworkservices", capture_output=True, shell=True)
+    net_services = rs.stdout.decode().split("\n")
 
-    for line in fd:
+    for line in net_services:
         if line.find("disabled") >= 0: continue
         line = line.strip()
         line = line.replace("\r", "")
         line = line.replace("\n", "")
         line = line.replace(" ", "\\ ")
         services.append(line)
-
-    fd.close()
 
     for service in services:
         cmd = "networksetup -setdnsservers %s \"Empty\"" % service
@@ -1452,7 +1449,7 @@ def __start_service(mode, debug, conf_dir, keep_os_resolv=False):
         return
 
     if platform.system().lower() == "linux":
-        subprocess.call("systemctl stop systemd-resolved",shell=True)
+        subprocess.call("systemctl stop systemd-resolved", shell=True)
         resolv_path = "/etc/resolv.conf"
         if os.path.isfile(resolv_path) and not os.access(resolv_path, os.W_OK):
             print("ERROR:%s read only,it must be writable and readable")
