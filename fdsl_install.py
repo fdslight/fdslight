@@ -16,7 +16,7 @@ def __build_fn_utils(cflags):
         files += ["freenet/lib/darwin.c"]
         cflags += " -DDarwin "
     sys_build.do_compile(
-        files, "freenet/lib/fn_utils.so", cflags, debug=False,
+        files, "freenet/lib/fn_utils.so", cflags,
         is_shared=True
     )
 
@@ -36,7 +36,7 @@ def get_python_cflags():
     return s
 
 
-def build_client(cflags, gw_mode=False):
+def build_client(cflags):
     cflags += " -O3 -Wall -g"
     __build_fn_utils(cflags)
 
@@ -59,7 +59,7 @@ def main():
         print("ERROR:not support your platform")
         return
 
-    build_client(cflags, gw_mode=False)
+    build_client(cflags)
 
 
 if __name__ == '__main__':

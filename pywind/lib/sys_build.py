@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os
+import os, subprocess
 
 
 def get_c_files(d):
@@ -33,7 +33,7 @@ def get_c_files_from_dirs(d_list):
     return rs
 
 
-def do_compile(flist, output, c_flags, debug=False, is_shared=False):
+def do_compile(flist, output, c_flags, is_shared=False):
     cmd = "cc"
 
     if is_shared:
@@ -41,12 +41,9 @@ def do_compile(flist, output, c_flags, debug=False, is_shared=False):
 
     cmd += " %s -o %s" % (" ".join(flist), output,)
 
-    if debug:
-        cmd += " -g -Wall -D DEBUG"
-
     if c_flags:
         cmd += " %s" % c_flags
 
     print(cmd)
 
-    os.system(cmd)
+    subprocess.call(cmd, shell=True)
