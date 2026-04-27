@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """操作系统网卡
 """
-import os
+import os, subprocess
 
 
 def get_os_all_ipaddrs():
@@ -11,8 +11,10 @@ def get_os_all_ipaddrs():
     addrs_v4 = []
     addrs_v6 = []
 
-    fd = os.popen("ip addr show")
-    for line in fd:
+    p = subprocess.run("ip addr show", capture_output=True, shell=True)
+    _list = p.stdout.decode().split("\n")
+
+    for line in _list:
         is_ipv6 = False
 
         line = line.strip()
@@ -38,6 +40,5 @@ def get_os_all_ipaddrs():
         else:
             addrs_v4.append(addr)
         ''''''
-    fd.close()
 
     return addrs_v4, addrs_v6

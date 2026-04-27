@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, platform
+import os, sys, platform, subprocess
 import pywind.lib.sys_build as sys_build
 
 
@@ -22,18 +22,16 @@ def __build_fn_utils(cflags):
 
 
 def get_python_cflags():
+    result = subprocess.run("python3-config --includes --ldflags", capture_output=True, shell=True)
+    s = result.stdout.decode("utf-8")
 
-    fd = os.popen("python3-config --includes --ldflags")
-    s = fd.read()
-    fd.close()
+    s = s.replace("\r", " ")
+    s = s.replace("\n", " ")
 
-    s=s.replace("\r"," ")
-    s=s.replace("\n"," ")
+    major = str(sys.version_info.major)
+    minor = str(sys.version_info.minor)
 
-    major=str(sys.version_info.major)
-    minor=str(sys.version_info.minor)
-
-    s+=" -lpython%s.%s" % (major,minor)
+    s += " -lpython%s.%s" % (major, minor)
 
     return s
 
@@ -57,7 +55,7 @@ def main():
 
     os_type = platform.system().lower()
 
-    if os_type not in ("linux","darwin"):
+    if os_type not in ("linux", "darwin"):
         print("ERROR:not support your platform")
         return
 

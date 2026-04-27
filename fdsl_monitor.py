@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 守护程序,程序意外退出时自动重启
-import getopt, os, sys, signal, time
+import getopt, os, sys, signal, time, subprocess
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -31,12 +31,12 @@ def stop_myself():
 
 def stop_proxy():
     cmd = "%s %s/fdsl_client.py -d stop" % (sys.executable, BASE_DIR,)
-    os.system(cmd)
+    subprocess.call(cmd, shell=True)
 
 
 def start_proxy(mode, conf_dir):
     cmd = "%s %s/fdsl_client.py -d start -m %s -c %s" % (sys.executable, BASE_DIR, mode, conf_dir)
-    os.system(cmd)
+    subprocess.call(cmd, shell=True)
 
 
 def start(mode, conf_dir):

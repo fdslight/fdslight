@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, getopt, signal, importlib, socket, sys, time, json, zlib, platform
+import os, getopt, signal, importlib, socket, sys, time, json, zlib, platform, subprocess
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
@@ -185,7 +185,7 @@ class _fdslight_client(dispatcher.dispatcher):
         cmds = [
             "dscacheutil -flushcache", "killall -HUP mDNSResponder",
         ]
-        for cmd in cmds: os.system(cmd)
+        for cmd in cmds: subprocess.call(cmd, shell=True)
 
     def auto_set_mac_os_dnsserver(self, servers=None):
         local = self.__configs["local"]
@@ -212,7 +212,7 @@ class _fdslight_client(dispatcher.dispatcher):
         for service in services:
             cmd = "networksetup -setdnsservers %s %s" % (service, " ".join(servers))
             # print(cmd)
-            os.system(cmd)
+            subprocess.call(cmd, shell=True)
         return
 
     def set_tun_devname(self, devname: str):
@@ -392,12 +392,12 @@ class _fdslight_client(dispatcher.dispatcher):
         # mac os的处理方式
         if self.is_mac_os(): return
         # 开启ip forward
-        os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
+        subprocess.call("echo 1 > /proc/sys/net/ipv4/ip_forward", shell=True)
         # 禁止接收ICMP redirect 包,防止客户端机器选择最佳路由
-        os.system("echo 0 | tee /proc/sys/net/ipv4/conf/*/send_redirects > /dev/null")
+        subprocess.call("echo 0 | tee /proc/sys/net/ipv4/conf/*/send_redirects > /dev/null", shell=True)
 
         if self.__enable_ipv6_traffic:
-            os.system("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding")
+            subprocess.call("echo 1 >/proc/sys/net/ipv6/conf/all/forwarding", shell=True)
         return
 
     def __cfg_mac_os_utun(self):
@@ -406,7 +406,7 @@ class _fdslight_client(dispatcher.dispatcher):
             "ifconfig %s inet6 %s/%s %s" % (
                 self.__devname, self.__local_ip6, self.__local_ip6_prefix, self.__local_ip6),
         ]
-        for cmd in cmds: os.system(cmd)
+        for cmd in cmds: subprocess.call(cmd, shell=True)
 
     def handle_msg_from_tundev(self, message):
         """处理来TUN设备的数据包
@@ -1032,7 +1032,7 @@ class _fdslight_client(dispatcher.dispatcher):
             cmd = "route add %s -net %s/%s -iface %s >/dev/null" % (s, host, prefix, self.__devname)
         else:
             cmd = "ip %s route add %s/%s dev %s" % (s, host, prefix, self.__devname)
-        os.system(cmd)
+        subprocess.call(cmd, shell=True)
 
         if not is_dynamic:
             name = "%s/%s" % (host, prefix,)
@@ -1065,7 +1065,7 @@ class _fdslight_client(dispatcher.dispatcher):
             cmd = "route delete %s -net %s/%s -iface %s > /dev/null" % (s, host, prefix, self.__devname)
         else:
             cmd = "ip %s route del %s/%s dev %s" % (s, host, prefix, self.__devname)
-        os.system(cmd)
+        subprocess.call(cmd, shell=True)
 
         if is_dynamic:
             self.__route_timer.drop(host)
@@ -1100,11 +1100,6 @@ class _fdslight_client(dispatcher.dispatcher):
         if self.handler_exists(self.__dns_fileno):
             self.delete_handler(self.__dns_fileno)
 
-        if self.__mode == _MODE_GW:
-            self.delete_handler(self.__dgram_fetch_fileno)
-            os.chdir("%s/driver" % BASE_DIR)
-            os.system("rmmod fdslight_dgram")
-            os.chdir("../")
         if self.__mode == _MODE_LOCAL:
             if not self.is_mac_os():
                 if not self.__keep_os_resolv_flags: self.__os_resolv.write_to_file(self.__os_resolv_backup)
@@ -1444,12 +1439,12 @@ def __mac_os_net_backup(pid: int):
     for service in services:
         cmd = "networksetup -setdnsservers %s \"Empty\"" % service
         # print(cmd)
-        os.system(cmd)
+        subprocess.call(cmd, shell=True)
     # 退出监护进程
     sys.exit(0)
 
 
-def __start_service(mode, debug, conf_dir,keep_os_resolv=False):
+def __start_service(mode, debug, conf_dir, keep_os_resolv=False):
     pid_file = "%s/fdslight.pid" % conf_dir
 
     if not debug and os.path.isfile(pid_file):
@@ -1457,7 +1452,7 @@ def __start_service(mode, debug, conf_dir,keep_os_resolv=False):
         return
 
     if platform.system().lower() == "linux":
-        os.system("systemctl stop systemd-resolved")
+        subprocess.call("systemctl stop systemd-resolved",shell=True)
         resolv_path = "/etc/resolv.conf"
         if os.path.isfile(resolv_path) and not os.access(resolv_path, os.W_OK):
             print("ERROR:%s read only,it must be writable and readable")
@@ -1482,12 +1477,12 @@ def __start_service(mode, debug, conf_dir,keep_os_resolv=False):
 
     if debug:
         try:
-            cls.ioloop(mode, debug, conf_dir,keep_os_resolv=keep_os_resolv)
+            cls.ioloop(mode, debug, conf_dir, keep_os_resolv=keep_os_resolv)
         except KeyboardInterrupt:
             cls.release()
         return
     try:
-        cls.ioloop(mode, debug, conf_dir,keep_os_resolv=keep_os_resolv)
+        cls.ioloop(mode, debug, conf_dir, keep_os_resolv=keep_os_resolv)
     except KeyboardInterrupt:
         cls.release()
     except:
