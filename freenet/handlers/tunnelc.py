@@ -595,7 +595,10 @@ class udp_tunnel(udp_handler.udp_handler):
         else:
             self.__is_received_udp_first = True
         if not self.__server_address: return
-        result = self.__decrypt.parse(message)
+        try:
+            result = self.__decrypt.parse(message)
+        except proto_utils.ProtoError:
+            return
         if not result: return
 
         session_id, action, byte_data = result
