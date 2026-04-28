@@ -58,6 +58,7 @@ def decypt_file_no_gen_file(path: str, key: str):
     fdst.close()
 
     file_md5 = src_data[0:16]
+    src_data=src_data[16:]
     nonce = file_md5
     aad = file_md5
 
