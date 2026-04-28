@@ -34,7 +34,17 @@ def get_c_files_from_dirs(d_list):
 
 
 def do_compile(flist, output, c_flags, is_shared=False):
-    cmd = "cc"
+    cc=os.getenv("CC")
+    if cc is None: cc="gcc"
+
+    r=subprocess.run("which %s" % cc, shell=True, capture_output=True)
+    s=r.stdout.decode("utf-8")
+
+    if not s and not os.path.isfile(cc):
+        print("ERROR: C compiler %s not found" % cc)
+        return
+
+    cmd = cc
 
     if is_shared:
         cmd += " -fPIC -shared"
