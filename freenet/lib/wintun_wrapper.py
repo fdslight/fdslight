@@ -27,7 +27,7 @@ class Wintun(object):
             subprocess.call(cmd, shell=True)
             return
         cmd += " 2>nul"
-        subprocess.call(cmd, shell=True)
+        subprocess.call(cmd, shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     def __set_if_idx(self):
         # 获取接口索引
