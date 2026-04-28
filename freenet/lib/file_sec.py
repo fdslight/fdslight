@@ -2,7 +2,7 @@
 # 文件加解密
 
 import os, hashlib
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 def encrypt_file(src_path: str, dst_path: str, key: str, is_deleted_src_file=False):
@@ -11,18 +11,16 @@ def encrypt_file(src_path: str, dst_path: str, key: str, is_deleted_src_file=Fal
     fdst.close()
 
     file_md5 = hashlib.md5(src_data).digest()
+    nonce = file_md5
+    key = hashlib.md5(key.encode('utf-8')).digest()
+    aad = file_md5
 
-    byte_key = hashlib.md5(key.encode('utf-8')).digest()
-    key2 = key + key
-    iv = hashlib.md5(key2.encode("utf-8")).digest()
+    aesgcm = AESGCM(key)
+    ct = aesgcm.encrypt(nonce, src_data, aad)
 
-    cipher = Cipher(algorithms.AES(byte_key), modes.CFB(iv))
-    encryptor = cipher.encryptor()
-    with open(dst_path, 'wb') as f:
-        f.write(file_md5)
-        f.write(encryptor.update(src_data))
-    encryptor.finalize()
-    f.close()
+    fdst = open(dst_path, 'wb')
+    fdst.write(file_md5 + ct)
+    fdst.close()
 
     if is_deleted_src_file: os.remove(src_path)
 
@@ -34,22 +32,19 @@ def decrypt_file(src_path: str, dst_path: str, key: str, is_deleted_src_file=Fal
 
     file_md5 = src_data[0:16]
     src_data = src_data[16:]
+    key = hashlib.md5(key.encode('utf-8')).digest()
 
-    byte_key = hashlib.md5(key.encode('utf-8')).digest()
-    key2 = key + key
-    iv = hashlib.md5(key2.encode("utf-8")).digest()
+    nonce = file_md5
+    aad = file_md5
 
-    cipher = Cipher(algorithms.AES(byte_key), modes.CFB(iv))
-    decryptor = cipher.decryptor()
+    aesgcm = AESGCM(key)
+    rs = aesgcm.decrypt(nonce, src_data, aad)
 
-    new_data = decryptor.update(src_data)
-    decryptor.finalize()
-
-    if hashlib.md5(new_data).digest() != file_md5:
+    if hashlib.md5(rs).digest() != file_md5:
         return False
 
     with open(dst_path, 'wb') as f:
-        f.write(new_data)
+        f.write(rs)
     f.close()
 
     if is_deleted_src_file: os.remove(src_path)
@@ -63,19 +58,14 @@ def decypt_file_no_gen_file(path: str, key: str):
     fdst.close()
 
     file_md5 = src_data[0:16]
-    src_data = src_data[16:]
+    nonce = file_md5
+    aad = file_md5
 
-    byte_key = hashlib.md5(key.encode('utf-8')).digest()
-    key2 = key + key
-    iv = hashlib.md5(key2.encode("utf-8")).digest()
+    aesgcm = AESGCM(key)
+    rs = aesgcm.decrypt(nonce, src_data, aad)
 
-    cipher = Cipher(algorithms.AES(byte_key), modes.CFB(iv))
-    decryptor = cipher.decryptor()
-    rdata = decryptor.update(src_data)
-    decryptor.finalize()
-
-    if hashlib.md5(rdata).digest() != file_md5:
+    if hashlib.md5(rs).digest() != file_md5:
         print("ERROR:cannot decrypt file %s" % path)
         return b""
 
-    return rdata
+    return rs
