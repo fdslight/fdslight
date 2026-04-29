@@ -107,7 +107,7 @@ class decrypt(crypto_base):
         data = _decrypt(self.key, self.user_id, self.user_id, body_data)
         if data is None: raise TCPPktWrong
 
-        return data
+        return self.user_id, data
 
     def unwrap(self, byte_data: bytes):
         if len(byte_data) < 32: return None

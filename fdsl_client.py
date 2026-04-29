@@ -200,6 +200,7 @@ class _fdslight_client(dispatcher.dispatcher):
         rs = subprocess.run("networksetup -listallnetworkservices", capture_output=True, shell=True)
         dns_list = rs.stdout.decode().split("\n")
         for line in dns_list:
+            if not line: continue
             if line.find("disabled") >= 0: continue
             line = line.strip()
             line = line.replace("\r", "")
@@ -1426,6 +1427,7 @@ def __mac_os_net_backup(pid: int):
     net_services = rs.stdout.decode().split("\n")
 
     for line in net_services:
+        if not line: continue
         if line.find("disabled") >= 0: continue
         line = line.strip()
         line = line.replace("\r", "")
