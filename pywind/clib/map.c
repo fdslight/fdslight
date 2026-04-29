@@ -99,7 +99,7 @@ int map_pre_alloc(struct map *m,unsigned int size)
 	struct map_node *t;
 	int rs=0;
 	
-	for(int n=0;n<size;n++){
+	for(unsigned int n=0;n<size;n++){
 		t=malloc(sizeof(struct map_node));
 		if(NULL==t){
 			rs=-1;
@@ -200,14 +200,13 @@ void map_del(struct map *m,const char *key,map_del_func_t fn)
 	char x,is_found;
 
 	struct map_node *node=m->tree_root,*t,*tmp_list=NULL;
+	void *data;
 
 	//DBG("%d\r\n",m->tree_root);
 	
 	//如没找到记录那么直接返回
-	t=map_find(m,key,&is_found);
+	data=map_find(m,key,&is_found);
 	if(!is_found) return;
-
-	if(NULL!=fn) fn(t);
 
 	// 首先进行反转,由下到上删除
 	for(int n=0;n<m->length;n++){
@@ -254,6 +253,10 @@ void map_del(struct map *m,const char *key,map_del_func_t fn)
 	//DBG("%d\r\n",m->tree_root);
 	m->tree_root->refcnt-=1;
 	m->key_tot_num-=1;
+
+	// key是一个引用值,调用del回调函数时候key的引用值可能存在删除问题
+	// 比如key存在一个结构体中,map保存的是这个结构体,删除key删除回调函数被调用,导致key删除,因此del回调函数
+	if(NULL!=fn) fn(data);
 }
 
 void *map_find(struct map *m,const char *key,char *is_found)
