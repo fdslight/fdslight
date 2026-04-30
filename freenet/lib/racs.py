@@ -57,10 +57,8 @@ class crypto_base(object):
     __is_tcp = None
     __user_id = None
 
-    def __init__(self, key: str, is_tcp=False):
+    def __init__(self, is_tcp=False):
         self.__is_tcp = is_tcp
-        key = calc_str_md5(key)
-        self.__key = key
 
     @property
     def key(self):
@@ -76,6 +74,10 @@ class crypto_base(object):
     @property
     def user_id(self):
         return self.__user_id
+
+    def set_key(self, key: str):
+        key = calc_str_md5(key)
+        self.__key = key
 
 
 class encrypt(crypto_base):
