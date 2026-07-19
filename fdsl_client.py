@@ -328,21 +328,21 @@ class _fdslight_client(dispatcher.dispatcher):
             self.set_route("::", prefix=0, is_ipv6=True, is_dynamic=False)
         else:
             local = configs["local"]
-        vir_dns = local["virtual_dns"]
-        vir_dns6 = local["virtual_dns6"]
+            vir_dns = local["virtual_dns"]
+            vir_dns6 = local["virtual_dns6"]
 
-        self.__local_dns = vir_dns
-        self.__local_dns6 = vir_dns6
+            self.__local_dns = vir_dns
+            self.__local_dns6 = vir_dns6
 
-        _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
+            _list = [("options", "single-request-reopen"), ("nameserver", vir_dns), ]
 
-        if not self.is_mac_os():
-            if not self.__keep_os_resolv_flags: self.__os_resolv.write_to_file(_list)
-        else:
-            self.auto_set_mac_os_dnsserver()
-        self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
-        if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
-
+            if not self.is_mac_os():
+                if not self.__keep_os_resolv_flags: self.__os_resolv.write_to_file(_list)
+            else:
+                self.auto_set_mac_os_dnsserver()
+            self.set_route(vir_dns, is_ipv6=False, is_dynamic=False)
+            if self.__enable_ipv6_traffic: self.set_route(vir_dns6, is_ipv6=True, is_dynamic=False)
+        ''''''
         conn = configs["connection"]
 
         m = "freenet.lib.crypto.%s" % conn["crypto_module"]
