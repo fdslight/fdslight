@@ -224,7 +224,7 @@ sub parse_csv_param($$@) {
     } split(',', $param_string);
 
     # Find all values which are not in the list of valid values or "ALL"
-    my @invalid = grep { !is_in_list($_,"ALL",@valid_values) } @values;
+    my @invalid = grep { !is_in_list($_, "ALL", @valid_values) } @values;
 
     if(scalar(@invalid) > 0) {
         # Tell the user which parameters were invalid and print the standard help
@@ -233,7 +233,7 @@ sub parse_csv_param($$@) {
         HELP_MESSAGE();
     }
 
-    @values = @valid_values if(is_in_list("ALL",@values));
+    @values = @valid_values if(is_in_list("ALL", @values));
 
     return @values;
 }
@@ -257,7 +257,7 @@ sub sha256 {
 
 sub oldhash {
     my $hash = "";
-    open(C, "<$_[0]") || return 0;
+    open(C, "<", $_[0]) or return 0;
     while(<C>) {
         chomp;
         if($_ =~ /^\#\# SHA256: (.*)/) {
@@ -309,7 +309,7 @@ if(!$opt_n) {
 
     # If we have an HTTPS URL then use curl
     if($url =~ /^https:\/\//i) {
-        my $curl = `curl -V`;
+        my $curl = qx(curl -V);
         if($curl) {
             if($curl =~ /^Protocols:.* https( |$)/m) {
                 report "Get certdata with curl!";
@@ -403,7 +403,7 @@ my $format = $opt_t ? "plain text and " : "";
 if($stdout) {
     open(CRT, '> -') or die "Could not open STDOUT: $!\n";
 } else {
-    open(CRT,">$crt.~") or die "Could not open $crt.~: $!\n";
+    open(CRT, ">", "$crt.~") or die "Could not open $crt.~: $!\n";
 }
 print CRT <<EOT;
 ##
@@ -421,7 +421,7 @@ print CRT <<EOT;
 ## It contains the certificates in ${format}PEM format and therefore
 ## can be directly used with curl / libcurl / php_curl, or with
 ## an Apache+mod_ssl webserver for SSL client authentication.
-## Just configure this file as the SSLCACertificateFile.
+## Configure this file as the SSLCACertificateFile.
 ##
 ## Conversion done with mk-ca-bundle.pl version $version.
 ## SHA256: $newhash
@@ -493,7 +493,7 @@ while(<TXT>) {
     #
     # The latter is for certificates that have already been removed and are not
     # included. Not all explicitly distrusted certificates are ignored at this
-    # point, just those without an actual certificate.
+    # point, only those without an actual certificate.
     elsif(!$main_block && !$trust_block) {
         next;
     }
@@ -575,9 +575,9 @@ while(<TXT>) {
                 last;
             }
             if(/^CKA_TRUST_([A-Z_]+)\s+CK_TRUST\s+CKT_NSS_([A-Z_]+)\s*$/) {
-                if(!is_in_list($1,@valid_mozilla_trust_purposes)) {
+                if(!is_in_list($1, @valid_mozilla_trust_purposes)) {
                     report "Warning: Unrecognized trust purpose for cert: $caname. Trust purpose: $1. Trust Level: $2";
-                } elsif(!is_in_list($2,@valid_mozilla_trust_levels)) {
+                } elsif(!is_in_list($2, @valid_mozilla_trust_levels)) {
                     report "Warning: Unrecognized trust level for cert: $caname. Trust purpose: $1. Trust Level: $2";
                 } else {
                     push @{$trust_purposes_by_level{$2}}, $1;
@@ -635,7 +635,7 @@ while(<TXT>) {
                     print TMP $pem;
                     close(TMP) or die "Could not close openssl pipe: $!";
                     if(!$stdout) {
-                        open(CRT, ">>$crt.~") or die "Could not open $crt.~: $!";
+                        open(CRT, ">>", "$crt.~") or die "Could not open $crt.~: $!";
                     }
                 }
                 $pipe = "|$openssl x509 -text -inform PEM";
@@ -647,7 +647,7 @@ while(<TXT>) {
                 print TMP $pem;
                 close(TMP) or die "Could not close openssl pipe: $!";
                 if(!$stdout) {
-                    open(CRT, ">>$crt.~") or die "Could not open $crt.~: $!";
+                    open(CRT, ">>", "$crt.~") or die "Could not open $crt.~: $!";
                 }
             }
             report "Processed: $caname" if($opt_v);
