@@ -409,7 +409,11 @@ class fdslight_client(dispatcher.dispatcher):
             self.__open_tunnel()
 
         if not self.handler_exists(self.__tunnel_fileno): return
-
+        # 压缩DNS数据
+        if action == proto_utils.ACT_DNS:
+            message = zlib.compress(message)
+            action = proto_utils.ACT_ZLIB_DNS
+        """
         # 压缩DNS和IPDATA数据
         if action in (proto_utils.ACT_IPDATA, proto_utils.ACT_DNS,):
             length = len(message)
@@ -424,6 +428,7 @@ class fdslight_client(dispatcher.dispatcher):
                     action = proto_utils.ACT_ZLIB_DNS
                 ''''''
             ''''''
+        """
         handler = self.get_handler(self.__tunnel_fileno)
         handler.send_msg_to_tunnel(self.session_id, action, message)
 
