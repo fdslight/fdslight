@@ -40,6 +40,11 @@ class host_match(object):
 
         # 未匹配那么查找子项所有匹配是否存在
         if "*" in o:
+            rs = o["*"]["rule_info"]["action"]
+            return True, rs
+
+        o = self.__rule_tree
+        if "*" in o:
             return True, o["*"]["rule_info"]["action"]
 
         return False, None
@@ -120,10 +125,11 @@ class host_match(object):
         self.__rule_tree = {}
         self.__rules = {}
 
-#cls = host_match()
-#cls.add_rule(("*.google.com",1))
+# cls = host_match()
+# cls.add_rule(("*.google.com", 1))
+# cls.add_rule(("*.facebook.com",1))
 # cls.add_rule("*.google.com", "this is action")
-# cls.add_rule("*", "this is action")
+# cls.add_rule(("*", "this is action"))
 # print(cls.rules)
 # print(cls.rule_tree)
-# print(cls.match("www.google.com"))
+# print(cls.match("www.google1.com"))
