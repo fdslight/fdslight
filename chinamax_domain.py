@@ -35,7 +35,7 @@ def main():
     url = "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/ChinaMax/ChinaMax_Domain.txt"
 
     subprocess.call("curl %s -o chinamax_domain.txt" % url, shell=True)
-    generate("chinamax_domain.txt", "proxy_domain.txt", [("*", "1")], "3")
+    generate("chinamax_domain.txt", "host_rules.txt", [("*", "1")], "3")
 
 
 if __name__ == "__main__":
