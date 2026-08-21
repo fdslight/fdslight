@@ -223,7 +223,7 @@ class dnsc_proxy(dns_base):
 
         questions = msg.question
         # 超过1个问题的数据包丢弃
-        if len(questions) != 0: return
+        if len(questions) != 1: return
 
         """
         if len(questions) != 1 or msg.opcode() != 0:
