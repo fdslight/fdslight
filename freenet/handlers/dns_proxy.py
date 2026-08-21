@@ -222,7 +222,10 @@ class dnsc_proxy(dns_base):
             return
 
         questions = msg.question
+        # 超过1个问题的数据包丢弃
+        if len(questions) != 0: return
 
+        """
         if len(questions) != 1 or msg.opcode() != 0:
             # self.send_message_to_handler(self.fileno, self.__udp_client, message)
             # 如果开启DoT并且DoT连不上那么使用传统DNS查询
@@ -232,8 +235,7 @@ class dnsc_proxy(dns_base):
                 self.sendto(message, (self.__dnsserver, 53))
                 self.add_evt_write(self.fileno)
             return
-
-        """
+            
         q = questions[0]
         if q.rdtype != 1 or q.rdclass != 1:
             self.__send_to_dns_server(self.__transparent_dns, message)
@@ -370,7 +372,7 @@ class dnsc_proxy(dns_base):
 
     def udp_error(self):
         # 因为是bind套接字,存在网络没有并且要发送数据情况,这种情况忽略,避免报错程序退出
-        #self.delete_handler(self.fileno)
+        # self.delete_handler(self.fileno)
         pass
 
     def udp_delete(self):
@@ -421,7 +423,7 @@ class dot_client(tcp_handler.tcp_handler):
         self.set_socket(s)
         self.__conn_timeout = conn_timeout
 
-        server_ip = self.dispatcher.get_server_ip2(host,enable_ipv6=is_ipv6)
+        server_ip = self.dispatcher.get_server_ip2(host, enable_ipv6=is_ipv6)
         if server_ip is None:
             logging.print_error("cannot get %s ip address" % host)
             s.close()
