@@ -11,6 +11,8 @@ def generate(src_path, dst_path, adds: list, suffix):
 
     for name, value in adds:
         dst.write(name + ":" + value + "\n")
+    dst.write("\n")
+
     src = open(src_path, 'r')
     for line in src:
         line = line.strip()
