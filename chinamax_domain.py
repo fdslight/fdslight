@@ -10,7 +10,7 @@ def generate(src_path, dst_path, adds: list, suffix):
     dst.write(up_time)
 
     for name, value in adds:
-        dst.write(name + ":" + value + "\n")
+        dst.write(name + ":" + str(value) + "\n")
     dst.write("\n")
 
     src = open(src_path, 'r')
