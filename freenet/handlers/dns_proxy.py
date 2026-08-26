@@ -246,7 +246,7 @@ class dnsc_proxy(dns_base):
         host = b".".join(q.name[0:-1]).decode("iso-8859-1")
         pos = host.find(".")
 
-        if pos > 0 and self.__debug: print("DNS_QUERY:%s" % host)
+        #if pos > 0 and self.__debug: print("DNS_QUERY:%s" % host)
 
         if self.__is_ipv6:
             mtu = 1280
@@ -326,6 +326,8 @@ class dnsc_proxy(dns_base):
                     print("DNS_QUERY_DROP:%s" % host)
                 return
             elif flags == 3:
+                if self.__debug:
+                    print("DNS_QUERY_DIRECT:%s" % host)
                 # 如果开启DoT并且DoT连不上那么使用传统DNS查询
                 if self.dispatcher.enable_dot and self.dispatcher.dot_fd >= 0:
                     self.get_handler(self.dispatcher.dot_fd).send_to_server(message)
@@ -334,6 +336,8 @@ class dnsc_proxy(dns_base):
                     self.add_evt_write(self.fileno)
                 ''''''
             else:
+                if self.__debug:
+                    print("DNS_QUERY_PROXY:%s" % host)
                 self.dispatcher.send_msg_to_tunnel(proto_utils.ACT_DNS, message)
             return
         # 如果开启DoT并且DoT连不上那么使用传统DNS查询
