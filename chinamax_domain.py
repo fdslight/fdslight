@@ -6,7 +6,7 @@ import subprocess, os, time
 
 
 def generate(src_path, dst_path, adds: list, suffix):
-    up_time = time.strftime("# %Y-%m-%d %H:%M:%S %Z\n")
+    up_time = time.strftime("# %Y-%m-%d %H:%M:%S\n")
     dst = open(dst_path, "w")
     dst.write(up_time)
     s = """
