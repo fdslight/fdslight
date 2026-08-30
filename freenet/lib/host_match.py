@@ -46,7 +46,7 @@ class host_match(object):
             return True, rs
 
         # 子项不存在那么逐渐减少域名等级域,执行最大化匹配
-        if i == 0: return None
+        if i == 0: return False, None
         i -= 1
         new_list = _list[0:i]
         new_list.append("")
