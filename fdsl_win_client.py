@@ -619,6 +619,8 @@ class fdslight_client(dispatcher.dispatcher):
         tunnel_type = conn["tunnel_type"]
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
+        tunnel_enable = bool(int(conn.get("tunnel_enable", 1)))
+        if not tunnel_enable: return
 
         use_https = False
 
@@ -953,7 +955,6 @@ class fdslight_client(dispatcher.dispatcher):
         self.__wintun.delete_driver()
         self.__clear_winreg()
 
-
     @property
     def ca_path(self):
         """获取CA路径
@@ -1182,6 +1183,7 @@ def __start_service(conf_dir, sec_key):
         cls.release()
     ''''''
 
+
 def __is_admin():
     rs = ctypes.windll.shell32.IsUserAnAdmin()
     if not rs: return False
@@ -1224,8 +1226,8 @@ def main():
         return
 
     # 禁止程序后台之后休眠
-    kernel32=ctypes.windll.kernel32
-    kernel32.SetConsoleMode(kernel32.GetStdHandle(-10),128)
+    kernel32 = ctypes.windll.kernel32
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
 
     __start_service(c, sec_key)
 

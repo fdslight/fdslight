@@ -766,6 +766,8 @@ class _fdslight_client(dispatcher.dispatcher):
         tunnel_type = conn["tunnel_type"]
         redundancy = bool(int(conn.get("udp_tunnel_redundancy", 1)))
         over_https = bool(int(conn.get("tunnel_over_https", 0)))
+        tunnel_enable = bool(int(conn.get("tunnel_enable", 1)))
+        if not tunnel_enable: return
 
         use_https = False
 
