@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import pywind.evtframework.handlers.udp_handler as udp_handler
 import pywind.evtframework.handlers.tcp_handler as tcp_handler
 import pywind.lib.timer as timer
@@ -24,6 +25,7 @@ import freenet.lib.ip_match as ip_match
 import freenet.lib.logging as logging
 import freenet.lib.dns_utils as dns_utils
 import freenet.lib.ssl_backports as ssl_backports
+import freenet.lib.DNSCache as DNSCache
 
 
 class dns_base(udp_handler.udp_handler):
@@ -91,6 +93,8 @@ class dnsc_proxy(dns_base):
 
     __enable_ipv6_dns_drop = None
 
+    __cache = None
+
     def init_func(self, creator, address, debug=False, is_ipv6=False, enable_ipv6_dns_drop=False):
         if is_ipv6:
             fa = socket.AF_INET6
@@ -117,6 +121,9 @@ class dnsc_proxy(dns_base):
         self.__host_match = host_match.host_match()
 
         self.__enable_ipv6_dns_drop = enable_ipv6_dns_drop
+        self.__cache = DNSCache.DNSCache()
+        # DNS缓存时间
+        self.__cache.set_timeout(600)
 
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
         self.register(self.fileno)
@@ -182,7 +189,7 @@ class dnsc_proxy(dns_base):
         dns_id = (message[0] << 8) | message[1]
         if not self.dns_id_map_exists(dns_id): return
 
-        saddr, daddr, dport, n_dns_id, flags, is_ipv6 = self.get_dns_id_map(dns_id)
+        saddr, daddr, dport, n_dns_id, flags, is_ipv6, host = self.get_dns_id_map(dns_id)
         self.del_dns_id_map(dns_id)
         L = list(message)
         L[0:2] = (
@@ -195,8 +202,10 @@ class dnsc_proxy(dns_base):
             for cname in rrset:
                 ip = cname.__str__()
                 if utils.is_ipv4_address(ip):
+                    self.__cache.set_cache_record(host, ip, _type=DNSCache.A_RECORD)
                     self.__set_route(ip, flags, is_ipv6=False)
                 if utils.is_ipv6_address(ip):
+                    self.__cache.set_cache_record(host, ip, _type=DNSCache.AAAA_RECORD)
                     self.__set_route(ip, flags, is_ipv6=True)
             ''''''
         ''''''
@@ -247,8 +256,8 @@ class dnsc_proxy(dns_base):
 
         q = questions[0]
         host = b".".join(q.name[0:-1]).decode("iso-8859-1")
-        pos = host.find(".")
 
+        # pos = host.find(".")
         # if pos > 0 and self.__debug: print("DNS_QUERY:%s" % host)
 
         if self.__is_ipv6:
@@ -261,8 +270,11 @@ class dnsc_proxy(dns_base):
         ip6_addr = aaaa_hosts.get(host, "")
         ip4_addr = a_hosts.get(host, "")
         hosts_resp_flags = False
+        is_aaaa = False
+        is_a = False
 
         if dns_utils.is_aaaa_request(message):
+            is_aaaa = True
             if ip6_addr:
                 hosts_resp_flags = True
                 resp_msg = dns_utils.build_dns_addr_response(dns_id, host, ip6_addr, is_ipv6=True)
@@ -274,6 +286,7 @@ class dnsc_proxy(dns_base):
                 ''''''
             ''''''
         if dns_utils.is_a_request(message):
+            is_a = True
             ip4_addr = a_hosts.get(host, "")
             if ip4_addr:
                 hosts_resp_flags = True
@@ -296,7 +309,7 @@ class dnsc_proxy(dns_base):
         if n_dns_id < 0: return
 
         if not is_match: flags = None
-        self.set_dns_id_map(n_dns_id, (daddr, saddr, sport, dns_id, flags, is_ipv6,))
+        self.set_dns_id_map(n_dns_id, (daddr, saddr, sport, dns_id, flags, is_ipv6, host,))
 
         L = list(message)
         L[0:2] = (
@@ -328,7 +341,23 @@ class dnsc_proxy(dns_base):
                 if self.__debug:
                     print("DNS_QUERY_DROP:%s" % host)
                 return
-            elif flags == 3:
+
+            if is_aaaa or is_a:
+                if is_aaaa:
+                    _type = DNSCache.AAAA_RECORD
+                    is_ipv6 = True
+                else:
+                    is_ipv6 = False
+                    _type = DNSCache.A_RECORD
+                r = self.__cache.record_get(host, _type=_type)
+                if r is not None:
+                    new_msg = dns_utils.build_dns_addr_response(n_dns_id, host, r['address'], is_ipv6=is_ipv6)
+                    self.handle_msg_from_response(new_msg)
+                    if self.__debug:
+                        print("DNS_FROM_CACHE:%s" % host)
+                    return
+                ''''''
+            if flags == 3:
                 if self.__debug:
                     print("DNS_QUERY_DIRECT:%s" % host)
                 # 如果开启DoT并且DoT连不上那么使用传统DNS查询
@@ -367,6 +396,7 @@ class dnsc_proxy(dns_base):
             self.del_dns_id_map(name)
             self.__timer.drop(name)
         self.set_timeout(self.fileno, self.__LOOP_TIMEOUT)
+        self.__cache.cache_loop()
 
     def udp_readable(self, message, address):
         if address[0] != self.__dnsserver: return
