@@ -203,11 +203,15 @@ class dnsc_proxy(dns_base):
                 ip = cname.__str__()
                 if utils.is_ipv4_address(ip):
                     if self.__cache.get(host,_type=DNSCache.A_RECORD) is None:
+                        if self.__debug:
+                            print("DNS_ADD_TO_CACHE:%s" % host)
                         self.__cache.set_cache_record(host, ip, _type=DNSCache.A_RECORD)
                     self.__set_route(ip, flags, is_ipv6=False)
                 ''''''
                 if utils.is_ipv6_address(ip):
                     if self.__cache.get(host, _type=DNSCache.AAAA_RECORD) is None:
+                        if self.__debug:
+                            print("DNS_ADD_TO_CACHE:%s" % host)
                         self.__cache.set_cache_record(host, ip, _type=DNSCache.AAAA_RECORD)
                     self.__set_route(ip, flags, is_ipv6=True)
                 ''''''
