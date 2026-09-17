@@ -54,7 +54,7 @@ def main():
     subprocess.call("curl %s -o chinamax_domain.txt" % url, shell=True)
     adds = [
         ("*", "1"),
-        ("services.googleapis.cn", 1),
+        ("services.googleapis.cn", "1"),
     ]
     generate("chinamax_domain.txt", "host_rules.txt", adds, "3")
 
