@@ -55,6 +55,7 @@ def main():
     adds = [
         ("*", "1"),
         ("services.googleapis.cn", "1"),
+        ("*.cn.akadns.net", "2"),
     ]
     generate("chinamax_domain.txt", "host_rules.txt", adds, "3")
 
