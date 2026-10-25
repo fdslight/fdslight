@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, platform, subprocess
+import sys, platform, subprocess, sysconfig
 import pywind.lib.sys_build as sys_build
 
 
@@ -22,16 +22,9 @@ def __build_fn_utils(cflags):
 
 
 def get_python_cflags():
-    result = subprocess.run("python3-config --includes --ldflags", capture_output=True, shell=True)
-    s = result.stdout.decode("utf-8")
-
-    s = s.replace("\r", " ")
-    s = s.replace("\n", " ")
-
-    major = str(sys.version_info.major)
-    minor = str(sys.version_info.minor)
-
-    s += " -lpython%s.%s" % (major, minor)
+    s = " -I " + sysconfig.get_path("include")
+    s += " -L " + sysconfig.get_config_var('LIBDIR')
+    s += " -lpython" + sysconfig.get_python_version()
 
     return s
 
@@ -63,4 +56,5 @@ def main():
 
 
 if __name__ == '__main__':
+    print(sysconfig.get_path("include"))
     main()
