@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, platform, subprocess, sysconfig
+import sys, platform, sysconfig
 import pywind.lib.sys_build as sys_build
 
 
