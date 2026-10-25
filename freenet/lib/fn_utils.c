@@ -267,12 +267,12 @@ static PyObject *
 calc_csum(PyObject *self,PyObject *args)
 {
     const char *sts;
-	Py_ssize_t size=0,udp_size=0;
+	Py_ssize_t size=0,psize=0;
     unsigned short int csum;
 
-    if(!PyArg_ParseTuple(args,"y#i",&sts,&size,&udp_size)) return NULL;
+    if(!PyArg_ParseTuple(args,"y#i",&sts,&size,&psize)) return NULL;
 
-    csum=calc_checksum((unsigned short *)sts,udp_size);
+    csum=calc_checksum((unsigned short *)sts,psize);
 
     return PyLong_FromLong(csum);
 }
