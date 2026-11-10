@@ -177,7 +177,6 @@ unsigned char *src_addr,unsigned char *dst_addr,unsigned short src_port,unsigned
 char *user_data,unsigned short user_data_len,char *res,int *offset,int is_ipv6,\
 int is_udplite,int udplite_csum_coverage)
 {
-
     unsigned char protocol=is_udplite?136:17;
     unsigned short csum=0,length;
     unsigned char *s=NULL;
@@ -212,11 +211,11 @@ int is_udplite,int udplite_csum_coverage)
     } *udphdr;
 
     // 限制数据包最大值以及最小值
-    if(user_data_len>=65535 || user_data_len<1) return NULL;
+    if(user_data_len>=65400 || user_data_len<1) return NULL;
 
     src_port=htons(src_port);
     dst_port=htons(dst_port);
-    length=htons(user_data_len);
+    length=htons(user_data_len+8);
 
     if(is_ipv6) {
         memcpy(header6.src_addr,src_addr,16);
@@ -252,12 +251,15 @@ int is_udplite,int udplite_csum_coverage)
     memcpy(res+size+8,user_data,user_data_len);
 
     if(is_udplite){
-        csum=0;
+        if(udplite_csum_coverage<8) udplite_csum_coverage=8;
+        if(user_data_len+8<udplite_csum_coverage) udplite_csum_coverage=user_data_len+8;
+        udphdr->checksum_coverage=htons(udplite_csum_coverage);
+        csum=csum_calc((unsigned short *)(udphdr),udplite_csum_coverage);
     }else{
         csum=csum_calc((unsigned short *)s,size+8+user_data_len);
-        udphdr->checksum=htons(csum);
     }
 
+    udphdr->checksum=htons(csum);
     *offset=size;
 
     return res+size;
