@@ -27,7 +27,7 @@ class Wintun(object):
             subprocess.call(cmd, shell=True)
             return
         cmd += " 2>nul"
-        subprocess.call(cmd, shell=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        subprocess.call(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def __set_if_idx(self):
         # 获取接口索引
@@ -243,7 +243,10 @@ class Wintun(object):
 
         # if len(_list2) > 3:
         #    nameservers.append(_list2[2])
-        s = _list2[1]
+        try:
+            s = _list2[1]
+        except IndexError:
+            return nameservers
         p = s.find(":")
         p += 1
         s = s[p:].strip()
