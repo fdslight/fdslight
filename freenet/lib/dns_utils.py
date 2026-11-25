@@ -75,6 +75,56 @@ def is_a_request(dnspkt: bytes):
     return is_a
 
 
+def is_dns_ddr_request(dnspkt: bytes):
+    """是否是DNS DDR
+    """
+    xid, flags, questions, answer_rrs, authority_rrs, add_rrs = struct.unpack(HEADER_FMT, dnspkt[0:12])
+    # 检查QR值
+    if flags & 0x0000 != 0: return False
+    # 一般AAAA查询或者A查询都只有一个问题
+    if questions != 1: return False
+    dnspkt = dnspkt[12:]
+    dns_fmt_ok = False
+    host_seq = []
+    while 1:
+        try:
+            length = dnspkt[0]
+        except IndexError:
+            break
+        if length == 0:
+            dnspkt = dnspkt[1:]
+            dns_fmt_ok = True
+            break
+        dnspkt = dnspkt[1:]
+        tmp_v = dnspkt[0:length]
+        host_seq.append(tmp_v)
+        dnspkt = dnspkt[length:]
+    if len(dnspkt) < 4: return False
+    if not dns_fmt_ok: return False
+    _type, = struct.unpack("!H", dnspkt[0:2])
+    if _type != 64: return False
+    byte_s = b".".join(host_seq)
+    if byte_s == b"_dns.resolver.arpa": return True
+
+    return False
+
+
+def build_dns_ddr_no_response(xid: int):
+    header_data = struct.pack(HEADER_FMT, xid, 0x8580, 0x0001, 0x0000, 0x0000, 0x0000)
+    qtype = 64
+    host_list = ["_dns", "resolver", "arpa"]
+    _list = [header_data, ]
+
+    for s in host_list:
+        length = len(s)
+        _list.append(bytes([length]))
+        _list.append(s.encode("iso-8859-1"))
+    _list.append(b"\0")
+    _list.append(struct.pack("!HH", qtype, 0x0001))
+
+    return b"".join(_list)
+
+
 def __build_dns_err_response(xid: int, host: str, code: int, is_ipv6=False):
     header_data = struct.pack(HEADER_FMT, xid, code, 0x0001, 0x0000, 0x0000, 0x0000)
     if is_ipv6:
@@ -99,6 +149,7 @@ def build_dns_no_such_name_response(xid: int, host: str, is_ipv6=False):
     """构建DNS no such name 响应
     """
     return __build_dns_err_response(xid, host, 0x8180, is_ipv6=is_ipv6)
+
 
 def build_dns_addr_response(xid, host, addr, is_ipv6=False):
     """构建DNS A或者AAAA响应

@@ -202,7 +202,7 @@ class dnsc_proxy(dns_base):
             for cname in rrset:
                 ip = cname.__str__()
                 if utils.is_ipv4_address(ip):
-                    if self.__cache.record_get(host,_type=DNSCache.A_RECORD) is None:
+                    if self.__cache.record_get(host, _type=DNSCache.A_RECORD) is None:
                         if self.__debug:
                             print("DNS_ADD_TO_CACHE_A:%s" % host)
                         self.__cache.set_cache_record(host, ip, _type=DNSCache.A_RECORD)
@@ -280,6 +280,12 @@ class dnsc_proxy(dns_base):
         hosts_resp_flags = False
         is_aaaa = False
         is_a = False
+
+        # 加密DNS服务器请求过滤
+        # 使用软件进行DNS加密
+        if dns_utils.is_dns_ddr_request(message):
+            hosts_resp_flags = True
+            resp_msg = dns_utils.build_dns_ddr_no_response(dns_id)
 
         if dns_utils.is_aaaa_request(message):
             is_aaaa = True
